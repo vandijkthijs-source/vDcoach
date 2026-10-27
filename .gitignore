@@ -1,0 +1,28 @@
+node_modules
+.expo/
+dist/
+android/.gradle/
+android/**/build/
+android/local.properties
+
+# Local runtime, personal data and generated deliverables
+work/
+outputs/
+server/data/
+__pycache__/
+*.py[cod]
+.env
+.env.*
+!.env.example
+*.jks
+*.p12
+*.pem
+**/build/
+**/.cxx/
+**/.kotlin/
+*.apk
+*.aab
+.DS_Store
+
+# Signing keys stay local
+*.keystore

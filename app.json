@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "vDcoach",
+    "slug": "vdcoach",
+    "version": "1.1.0",
+    "scheme": "vdcoach",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": false,
+    "android": {
+      "package": "nl.vandijk.coach",
+      "allowBackup": false,
+      "versionCode": 2,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0b1017",
+        "monochromeImage": "./assets/monochrome-icon.png"
+      }
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "web": {
+      "output": "single",
+      "favicon": "./assets/favicon.png"
+    },
+    "icon": "./assets/icon.png"
+  }
+}

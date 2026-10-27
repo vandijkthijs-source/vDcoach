@@ -1,0 +1,17 @@
+[Unit]
+Description=vDcoach daily plan bridge
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/thijs/Documents/ChatGPT/VdCoach
+ExecStart=/usr/bin/python3 /home/thijs/Documents/ChatGPT/VdCoach/server/server.py
+Environment=VDCOACH_HOST=100.114.241.126
+Environment=VDCOACH_PORT=2285
+Restart=on-failure
+RestartSec=10
+UMask=0077
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target
