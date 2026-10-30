@@ -2,7 +2,7 @@
 
 Nederlandse Android-app met vier tabs:
 - **Vandaag**: automatisch aangeleverd ochtendoverzicht, maximaal drie prioriteiten, volledige checklist en ingeklapte broninformatie.
-- **Dagboek**: activiteiten toevoegen met Enter, afspraken uit de agenda en zichtbaar versleepbare volgorde via de greep rechts. Geplande afspraken pas afvinken na uitvoering. Oude notities blijven als dagboekregel bewaard.
+- **Dagboek**: agendaweergave met tijdkolom en afspraakblokken. Via + voeg je titel, datum, begin- en eindtijd (of hele dag), locatie en beschrijving toe. Tik op een activiteit om te bewerken of verwijderen. De lijstweergave behoudt de versleepbare volgorde. Wijzigingen blijven lokaal en veranderen Google Agenda niet. Geplande afspraken pas afvinken na uitvoering. Oude notities blijven als dagboekregel bewaard.
 - **Voeding**: losse tekstregels toevoegen met Enter; de coach schat kcal en macro’s bij de dagafsluiting.
 - **Instellingen**: laptopverbinding, vorige dagen en back-upexport.
 
@@ -75,3 +75,26 @@ For a fresh personal installation from a new checkout, create a local developmen
 ```bash
 keytool -genkeypair -v -keystore android/app/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
 ```
+
+Dagboek-tijdlijn: 06:00–00:00 met blokken op werkelijke duur. Tik een tijdslot voor een leeg uurblok, versleep de boven-/ondergreep in kwartieren en vul titel/tijden in via het paneel eronder. Tijd kiezen gebeurt via een 24-uursklok (uur en dan minuut), ook bij bewerken. Overlappende afspraken staan naast elkaar. Alles wordt lokaal opgeslagen.
+
+Activiteiten verplaatsen: houd een tijdblok circa een halve seconde ingedrukt en sleep omhoog/omlaag. De duur blijft behouden, tijden schuiven in kwartieren en blijven tussen 06:00 en 00:00. Kort aantikken opent het compacte venster met titel en klokvelden; datum, locatie, beschrijving en uitgevoerd worden daarin niet getoond. Bestaande gegevens blijven bewaard.
+
+## Activiteitentimer
+De vaste merk-/datumbalk is vervangen door een uitklapbare timerkaart. Voer een titel in en start; stoppen maakt een uitgevoerde activiteit in het lokale Dagboek met begin- en eindtijd. De echte looptijd en timestamps blijven bewaard; het agenda-raster toont hele minuten. Over middernacht wordt de registratie over de betreffende Amsterdam-dagen verdeeld.
+
+Android gebruikt een native foreground service (specialUse), een blijvende chronometermelding en de actie ‘Stop en bewaar’. Wegvegen van de app uit Recente apps stopt de timer niet. Zowel de actieve starttijd als gestopte registraties worden in native opslag vastgelegd. Bij stoppen vanuit de melding terwijl de app dicht is, wordt de registratie bij de volgende opening geïmporteerd, zonder dubbelen. Pas na succesvolle opslag in het dagboek wordt de native wachtrij bevestigd. Geen Google Agenda- of Drive-writes.
+
+Meldingen moeten bij de eerste start worden toegestaan. Live Update-promotie wordt aangevraagd voor een chip/statusweergave op ondersteunde Android/Samsung-versies; daadwerkelijke plaatsing in de Samsung Now Bar hangt af van toestel, One UI en systeeminstellingen. Een geforceerde stop door Android kan een appservice beëindigen; de opgeslagen begintijd blijft behouden. Browser-preview heeft alleen een opgeslagen timer, geen Android-melding.
+
+Native controle zonder APK: de timerbron is afzonderlijk met de lokale Kotlin-compiler tegen Android 36 en de bestaande AndroidX/React-klassen gecompileerd. De foregroundmelding/Now Bar moet nog op een fysieke Samsung worden gecontroleerd. Bouw zelf de release met `./gradlew assembleRelease` in android/.
+
+Voeding toont compacte kaartjes met iconen en behoudt vrije tekstinvoer met Enter. Tikken op het invoerveld opent eerder ingevoerde voedingsregels, meest recent eerst en zonder dubbele suggesties. Drie regels zijn zichtbaar; de overige staan in een apart scrollbare lijst. Tik een suggestie om de tekst over te nemen en eventueel aan te passen; Enter of + voegt hem toe. Alleen bestaande invoeren worden gebruikt, geen verzonnen maaltijden of automatische voedingsschattingen.
+
+Bij elk recent voedingsitem staat een kruisje om alleen die suggestie uit de historie te halen. Dit blijft na herstart en in back-ups bewaard en verwijdert geen dagregistraties. Wanneer je dezelfde voeding later zelf opnieuw toevoegt, verschijnt die weer als recente invoer. Herkenbare voeding krijgt een passend symbool; onbekende invoer gebruikt het neutrale bestekicoon.
+
+Vandaag toont korte taaktitels met uitklapbare volledige opdrachten. Maximaal drie open prioriteiten staan bovenaan met een subtiel blauw accent; overige taken volgen daaronder. Duur, expliciete deadline en doorschuifteller staan op één compacte regel. Afgeronde taken staan standaard ingeklapt onder ‘Afgerond · aantal’. Vegen naar morgen/verwijderen en de volledige avondoverdracht blijven werken. Dagplannen ondersteunen optioneel shortTitle en dueDate; oude plannen blijven bruikbaar zonder gegevensverlies.
+
+Uitgeklapte taken hebben een vrij opmerkingenveld dat automatisch lokaal wordt bewaard. Opmerkingen gaan mee naar morgen en naar de gekopieerde dagstatus. Swipe rechts verplaatst naar morgen; swipe links verwijdert. Vanaf deze versie worden verwijderde taken met hun volledige tekst en opmerking bewaard in een daglogboek voor ‘Verwijderd uit de daglijst’ in de avondoverdracht. Dat is geen afronding en geen automatische Drive-wijziging. Oude verwijderingen zonder bewaarde taaktekst worden niet achteraf verzonnen. Tijdens typen in de opmerking is vegen tijdelijk uitgeschakeld om onbedoeld verwijderen te voorkomen.
+
+Voedingsregels zijn direct bewerkbaar door op de tekst te tikken. Opslaan of Enter wijzigt dezelfde regel op dezelfde plaats, zonder een extra maaltijd toe te voegen; Annuleren bewaart de oorspronkelijke invoer. De timerkaart blijft na starten open, leegt het titelveld en biedt ruimte om de volgende activiteit alvast te typen. Stoppen bewaart de lopende activiteit onder de oorspronkelijke titel en laat die volgende titel staan voor de volgende start.

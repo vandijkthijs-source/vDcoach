@@ -16,7 +16,7 @@ Lees relevante nieuwe Gmail. Haal geen weer op. Gebruik hiervoor de gekoppelde p
 
 Voeding: neem alleen bevestigde voedselinname, hoeveelheden, supplementen en eventuele geschatte kcal/macro's uit recente relevante chat of actief dagboek mee. Geen fictieve maaltijden, geen dubbeltelling. Benoem aannames/onzekerheden. Voedingsinformatie komt bij latere expliciete dagverwerking in het dagboek, nooit tracker/backlog. Vitamine ochtend en creatine middag blijven open tenzij vandaag expliciet bevestigd. Het ochtendplan zelf zet geen done:true: bevestigingen vermeld je uitsluitend bij relevante broninformatie; gebruikersstatus in de app wordt nooit door de ochtendrun overschreven.
 
-Geen Google Drive-, Gmail- of agenda-writes. Geen catch-up, rolloverwijzigingen, dagboek-, tracker- of weekwisselupdates. Stale Drive versus recente chat: onzekerheid benoemen, niet gokken. Rollovermarkeringen exact zoals opgeslagen; bij ↻3 keuze doen/datum/backlog/schrappen benoemen zonder wijziging. Geen berichten versturen. Geen API key gebruiken, geen credits kopen, geen betaalde diensten.
+Geen Google Drive-, Gmail- of agenda-writes. Geen catch-up, rolloverwijzigingen, dagboek-, tracker- of weekwisselupdates. Stale Drive versus recente chat: onzekerheid benoemen, niet gokken. Doorschuiftelling alleen lokaal voor de app berekenen volgens de regels hieronder; geen rollovermarkeringen in Drive wijzigen. Bij ↻3 of hoger keuze doen/datum/backlog/schrappen benoemen zonder een keuze voor Thijs te maken. Geen berichten versturen. Geen API key gebruiken, geen credits kopen, geen betaalde diensten.
 
 ## Resultaat voor chat en app
 
@@ -31,7 +31,7 @@ Schema:
  "version":1,
  "date":"YYYY-MM-DD",
  "generatedAt":"ISO8601 inclusief tijdzone",
- "tasks":[{"id":"stabiele-id-uit-bron-of-onderwerp","title":"Concrete actie","category":"Task","done":false,"priority":true,"minutes":15,"rollovers":0}],
+ "tasks":[{"id":"stabiele-id-uit-bron-of-onderwerp","title":"Volledige concrete actie met eindtoestand","shortTitle":"Korte titel","category":"Task","done":false,"priority":true,"minutes":15,"rollovers":0}],
  "startId":null,
  "appointments":[{"id":"stabiele-agenda-event-id","title":"Afspraak","start":"ISO8601 inclusief tijdzone","end":"ISO8601 inclusief tijdzone","note":"Optioneel: bronconflict, afwijkende eindtijden of hele dag"}],
  "weather":"Eén praktische Nederlandse regel of expliciet niet beschikbaar",
@@ -52,3 +52,16 @@ Voedingsinvoer in de app is een lijst vrije tekstregels per dag (foodEntries), g
 
 ## Dagboek-tab
 De app toont afspraken uitsluitend in Dagboek, samen met door de gebruiker ingevoerde activiteiten. Geen weer meer ophalen of weerswaarschuwingen genereren: laat weather een lege string voor protocolcompatibiliteit. Geen algemene notitietaak maken. De avondoverdracht bevat het dagboek in de door de gebruiker gekozen volgorde; houd die volgorde aan. Alleen als gedaan bevestigde afspraken zijn uitgevoerd. Niet-afgevinkte afspraken blijven gepland/onbevestigd.
+
+## Volledigheid en concrete acties (verplicht)
+Maximaal drie prioriteiten is GEEN maximum aan taken. Verzamel eerst ALLE actuele concrete acties uit weekplan, dagboek, sollicitaties, backlog, tracker, relevante nieuwe Gmail en beschikbare recente gebruikersupdates. Behoud ook huishoudelijke acties, sport uit het geldende weekschema en niet-werkgerelateerde taken. Recente bevestigingen gaan boven oudere status; ontbrekende informatie uit andere chats is niet beschikbaar en mag niet worden verzonnen. Lees volledige relevante inhoud, inclusief latere aanvullingen en recente mailinhoud; stop niet na onderwerpregels. Vergelijk vóór publicatie de kandidaat-acties met tasks en appointments: elke weggelaten actie moet aantoonbaar afgerond, vervallen, geparkeerd, toekomstig of dubbel zijn. Een nog open concrete taak verdwijnt niet omdat de bron ouder is. Optionele vacatureverkenning blijft alleen staan wanneer vandaag relevant, en vervangt nooit concrete acties.
+
+Mail: nieuwe verificatie-/beveiligingsmeldingen sinds de laatste bevestigde controle leveren een concrete controleactie op, ook als oudere meldingen al gecontroleerd waren. Noem nooit verificatiecodes of tokens. Een antwoord voorbereiden/versturen als taak is geen externe schrijfoperatie: formuleer de benodigde actie volledig; stuur zelf niets. Bij Beau bijvoorbeeld de daadwerkelijke vraag om ziekenhuisnaam, 32 uur, werkgever, werkdruk en hybride werken behouden, niet afzwakken tot alleen bericht lezen.
+Sport: pas het recentst bevestigde vaste weekschema toe (als dit nog geldig is); een herhalend weekschema is een bron voor vandaag, geen willekeurige historische training. Conflicten of recentere afwijkingen gaan voor. Niet als uitgevoerd markeren. Geen extra inhaalsessies verzinnen.
+Afspraken zelf alleen in appointments. Een noodzakelijke handeling zoals afval klaarzetten/afhandelen blijft EEN concrete taak naast het ophaalvenster in Dagboek. Geen dubbele taak voor klaarzetten én afhandelen en geen START HIER.
+
+## Doorschuifsymbool ↻N
+Dit is het aantal kalenderdagen sinds de oorspronkelijke geplande dag van dezelfde nog open eenmalige taak, geen telling van refreshes of bewezen handmatige verplaatsingen. Geef bij aantoonbaar bekende oorspronkelijke plandatum optioneel firstPlannedDate: YYYY-MM-DD mee in de taak. Voorbeeld: gepland op 25 oktober, op 28 oktober nog open → firstPlannedDate 2026-10-25, rollovers 3. Vermeld de onderbouwing kort bij de relevante sourceChecks.note. Gebruik een expliciete planning, niet slechts een losse eerste vermelding of voorbeeld. Bij onbekende historie geen datum/aantal raden; behoud aantoonbaar opgeslagen telling of 0. De publisher rekent de datum om en kan dezelfde stabiele taak-ID uit het plan van gisteren volgen; hij schrijft geen Drive-bronnen. Habit/terugkerende taken krijgen geen historische doorschuiftelling. Gebruik nieuwe IDs voor echt nieuwe afzonderlijke instanties. Een zelfde-dag-refresh verhoogt nooit de teller. Neem bekende oorspronkelijke plandata ook in volgende publicaties mee; beëindigde/geannuleerde taken blijven beëindigd.
+
+## Compacte takenweergave
+Elke taak behoudt in title de VOLLEDIGE concrete actie, vragen/voorwaarden en eindtoestand; dit gaat ook naar de avondoverdracht. Voeg shortTitle toe als korte, herkenbare schermtitel (bij voorkeur maximaal 55 tekens, maximaal 80). Voorbeeld: shortTitle 'Stedin — Business Analist'; title bevat de volledige opdracht om vacature, ervaringseisen en sollicitatiebesluit te beoordelen. Geen instructies, voorwaarden of onzekerheden weglaten uit title om het scherm kort te maken: de app klapt die details open. Geef dueDate alleen mee als een echte deadline expliciet uit de bronnen bekend is, als YYYY-MM-DD; geen datum verzinnen of volgende actiedatum verwarren met deadline. Maximaal drie prioriteiten blijven bovenaan; alle overige taken blijven aanwezig en afgeronde taken zijn in de app inklapbaar.

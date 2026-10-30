@@ -1,5 +1,6 @@
 import React,{useEffect,useRef,useState} from 'react';
 import {Animated,PanResponder,Pressable,StyleSheet,Text,View} from 'react-native';
+import {darkColors} from '../constants/theme';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import {DiaryEntry,moveDiaryEntry} from '../lib/model';
 const MIN_HEIGHT=56,GAP=0;
@@ -25,9 +26,9 @@ export default function DiaryList(props:Props){
   onPanResponderTerminate:()=>{active.current=null;setDragging(null);latest.current.onDragging(false);settle(latest.current.entries);},
   onPanResponderTerminationRequest:()=>false,
  }));return responders.current.get(id)!;}
- const fg=props.dark?'#e5e9f2':'#292e3b',muted=props.dark?'#a4aec0':'#778193',accent=props.dark?'#8ba5ff':'#315df5';
+ const fg=props.dark?darkColors.text:'#292e3b',muted=props.dark?darkColors.textMuted:'#778193',accent=props.dark?darkColors.accent:'#315df5';
  const rows=layout(props.entries),last=rows[rows.length-1];
- return <View style={{height:last?last.top+last.height+GAP:0,position:'relative'}}>{props.entries.map((entry,i)=><Animated.View key={entry.id} onLayout={event=>{const height=Math.ceil(event.nativeEvent.layout.height);if(height>0&&heights.current.get(entry.id)!==height){heights.current.set(entry.id,height);setLayoutVersion(v=>v+1);}}} style={[s.item,{transform:[{translateY:value(entry.id,i)}],backgroundColor:dragging===entry.id?(props.dark?'#191e27':'#fff'):'transparent',borderRadius:dragging===entry.id?8:0,borderColor:dragging===entry.id?accent:props.dark?'#252d3a':'#e5e9f1',zIndex:dragging===entry.id?10:1,elevation:dragging===entry.id?8:0,shadowOpacity:dragging===entry.id?.15:0}]}>
+ return <View style={{height:last?last.top+last.height+GAP:0,position:'relative'}}>{props.entries.map((entry,i)=><Animated.View key={entry.id} onLayout={event=>{const height=Math.ceil(event.nativeEvent.layout.height);if(height>0&&heights.current.get(entry.id)!==height){heights.current.set(entry.id,height);setLayoutVersion(v=>v+1);}}} style={[s.item,{transform:[{translateY:value(entry.id,i)}],backgroundColor:dragging===entry.id?(props.dark?darkColors.panel:'#fff'):'transparent',borderRadius:dragging===entry.id?8:0,borderColor:dragging===entry.id?accent:props.dark?darkColors.border:'#e5e9f1',zIndex:dragging===entry.id?10:1,elevation:dragging===entry.id?8:0,shadowOpacity:dragging===entry.id?.15:0}]}>
  <Pressable accessibilityRole="checkbox" accessibilityLabel={`Gedaan: ${entry.text}`} accessibilityState={{checked:entry.done,disabled:props.disabled}} disabled={props.disabled} onPress={()=>props.onToggle(entry.id)} style={s.check}><Ionicons name={entry.done?'checkbox':'square-outline'} size={20} color={entry.done?accent:muted}/></Pressable>
  <View style={{flex:1,minWidth:0}}><Text style={{fontSize:14,lineHeight:20,color:fg}}>{entry.text}</Text>{(entry.appointmentId||entry.note)&&<Text style={{fontSize:11,lineHeight:16,color:muted}}>{[entry.appointmentId?entry.time??'Afspraak':null,entry.appointmentId&&!entry.done?'gepland':null,entry.note].filter(Boolean).join(' · ')}</Text>}</View>
  {!props.disabled&&<Pressable accessibilityRole="button" accessibilityLabel={`Verwijder ${entry.text}`} onPress={()=>props.onRemove(entry.id)} style={s.remove}><Ionicons name="close-outline" size={16} color={muted}/></Pressable>}

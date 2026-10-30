@@ -1,4 +1,5 @@
 """Shared validation and atomic publication for daily plans (no external writes)."""
+import copy
 import datetime as dt
 import json
 import os
@@ -21,6 +22,14 @@ def validate(p):
         if not isinstance(t.get('title'),str) or not t['title'].strip() or t.get('category') not in ('Task','Habit','Appointment'): raise ValueError('Invalid task')
         if t.get('done') is not False or type(t.get('priority')) is not bool: raise ValueError('Morning plans cannot complete tasks')
         if any(type(t.get(k)) is not int or t[k]<0 for k in ('minutes','rollovers')): raise ValueError('Invalid task duration/rollover')
+        if 'shortTitle' in t and (not isinstance(t['shortTitle'],str) or not t['shortTitle'].strip() or len(t['shortTitle'])>80):raise ValueError('Invalid short task title')
+        if 'dueDate' in t:
+            if not isinstance(t['dueDate'],str) or not re.fullmatch(r'\d{4}-\d{2}-\d{2}',t['dueDate']):raise ValueError('Invalid task deadline')
+            dt.date.fromisoformat(t['dueDate'])
+        if 'firstPlannedDate' in t:
+            if not isinstance(t['firstPlannedDate'],str) or not re.fullmatch(r'\d{4}-\d{2}-\d{2}',t['firstPlannedDate']):raise ValueError('Invalid original task date')
+            origin=dt.date.fromisoformat(t['firstPlannedDate'])
+            if t['category']!='Task' or origin>date:raise ValueError('Invalid original task date')
     if sum(t['priority'] for t in p['tasks'])>3 or p.get('startId') is not None and p['startId'] not in ids: raise ValueError('Invalid priorities/start')
     if not isinstance(p.get('appointments'),list): raise ValueError('Missing appointments')
     for a in p['appointments']:
@@ -36,7 +45,25 @@ def validate(p):
 
 def publish(plan,root):
     validate(plan)
-    root=Path(root);root.mkdir(parents=True,exist_ok=True,mode=0o700)
+    plan=copy.deepcopy(plan)
+    root=Path(root)
+    # Read only the immediately preceding plan: gaps are not evidence of continuity.
+    prior_path=root/((dt.date.fromisoformat(plan['date'])-dt.timedelta(days=1)).isoformat()+'.json')
+    prior={}
+    if prior_path.exists():
+        prior_plan=validate(json.loads(prior_path.read_text()))
+        prior={t['id']:t for t in prior_plan['tasks'] if t['category']=='Task'}
+    for task in plan['tasks']:
+        if task['category']!='Task':continue
+        old=prior.get(task['id'])
+        origin=task.get('firstPlannedDate')
+        if not origin and old:
+            origin=old.get('firstPlannedDate') or (dt.date.fromisoformat(prior_plan['date'])-dt.timedelta(days=old['rollovers'])).isoformat()
+        if origin:
+            task['firstPlannedDate']=origin
+            task['rollovers']=(dt.date.fromisoformat(plan['date'])-dt.date.fromisoformat(origin)).days
+    validate(plan)
+    root.mkdir(parents=True,exist_ok=True,mode=0o700)
     target=root/(plan['date']+'.json')
     if target.exists():
         previous=json.loads(target.read_text())
