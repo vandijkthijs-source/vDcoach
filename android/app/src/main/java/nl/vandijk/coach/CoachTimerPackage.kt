@@ -19,7 +19,7 @@ import java.util.UUID
 object CoachTimerStore {
  private fun prefs(c: Context) = c.getSharedPreferences("coach_timer", Context.MODE_PRIVATE)
  @Synchronized fun snapshot(c: Context): JSONObject = JSONObject(prefs(c).getString("state", null) ?: "{\"active\":null,\"completed\":[]}")
- private fun save(c: Context, state: JSONObject) { check(prefs(c).edit().putString("state", state.toString()).commit()) { "Timer kon niet worden opgeslagen" } }
+ private fun save(c: Context, state: JSONObject) { check(prefs(c).edit().putString("state", state.toString()).commit()) { "Timer kon niet worden opgeslagen" }; CoachWidgets.update(c) }
  @Synchronized fun start(c: Context, title: String): JSONObject {
   val state = snapshot(c)
   check(state.isNull("active")) { "Er loopt al een timer" }
@@ -57,7 +57,7 @@ class CoachTimerService: Service() {
  }
  override fun onBind(intent: Intent?) = null
  override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-  if(intent?.action == STOP) { CoachTimerStore.stop(this); stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); return START_NOT_STICKY }
+  if(intent?.action == STOP) { CoachTimerStore.stop(this); stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); CoachWidgets.update(this); return START_NOT_STICKY }
   val active = CoachTimerStore.snapshot(this).optJSONObject("active")
   if(active == null) { stopSelf(); return START_NOT_STICKY }
   val manager = getSystemService(NotificationManager::class.java)

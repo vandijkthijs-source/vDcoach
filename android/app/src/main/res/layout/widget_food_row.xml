@@ -1,0 +1,4 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/widget_food_row" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:padding="6dp" android:background="@drawable/widget_input_background">
+<TextView android:id="@+id/widget_food_icon" android:layout_width="28dp" android:layout_height="30dp" android:gravity="center" android:text="🥣" android:textSize="20sp" android:includeFontPadding="false" android:importantForAccessibility="no"/>
+<TextView android:id="@+id/widget_food_text" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginStart="5dp" android:text="500 g kwark" android:textColor="#f5f7fb" android:textSize="12sp" android:includeFontPadding="false" android:paddingTop="2dp" android:paddingBottom="2dp"/>
+</LinearLayout>

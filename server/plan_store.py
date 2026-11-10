@@ -14,6 +14,22 @@ def validate(p):
     date=dt.date.fromisoformat(p['date'])
     stamp=dt.datetime.fromisoformat(p.get('generatedAt','').replace('Z','+00:00'))
     if stamp.tzinfo is None or stamp.astimezone(ZONE).date()!=date: raise ValueError('generatedAt must match the Amsterdam plan date')
+    if 'applications' in p:
+        overview=p['applications']
+        if not isinstance(overview,dict) or not isinstance(overview.get('items'),list) or len(overview['items'])>100:raise ValueError('Invalid applications overview')
+        updated=dt.datetime.fromisoformat(overview.get('updatedAt','').replace('Z','+00:00'))
+        if updated.tzinfo is None:raise ValueError('Applications timestamp needs timezone')
+        app_ids=set()
+        for item in overview['items']:
+            if not isinstance(item,dict) or any(not isinstance(item.get(k),str) or not item[k].strip() or len(item[k])>2000 for k in ('id','company','role','status','nextAction')) or item['id'] in app_ids or item.get('stage') not in ('action','waiting','interview','closed'):raise ValueError('Invalid application')
+            app_ids.add(item['id'])
+            if 'color' in item and item['color'] not in ('green','orange','red'):raise ValueError('Invalid application color')
+            if 'note' in item and (not isinstance(item['note'],str) or len(item['note'])>4000):raise ValueError('Invalid application note')
+            if 'acknowledgedUpdateId' in item and (not isinstance(item['acknowledgedUpdateId'],str) or not item['acknowledgedUpdateId'].strip()):raise ValueError('Invalid application update acknowledgment')
+            if 'actionDate' in item:dt.date.fromisoformat(item['actionDate'])
+            if 'appointment' in item:
+                if dt.datetime.fromisoformat(item['appointment'].replace('Z','+00:00')).tzinfo is None:raise ValueError('Invalid application appointment')
+            if 'url' in item and (not isinstance(item['url'],str) or not item['url'].startswith('https://')):raise ValueError('Invalid application URL')
     if not isinstance(p.get('tasks'),list) or len(p['tasks'])>100: raise ValueError('Invalid tasks')
     ids=set()
     for t in p['tasks']:
@@ -22,6 +38,7 @@ def validate(p):
         if not isinstance(t.get('title'),str) or not t['title'].strip() or t.get('category') not in ('Task','Habit','Appointment'): raise ValueError('Invalid task')
         if t.get('done') is not False or type(t.get('priority')) is not bool: raise ValueError('Morning plans cannot complete tasks')
         if any(type(t.get(k)) is not int or t[k]<0 for k in ('minutes','rollovers')): raise ValueError('Invalid task duration/rollover')
+        if 'rolloverMode' in t and t['rolloverMode']!='stored':raise ValueError('Invalid rollover mode')
         if 'shortTitle' in t and (not isinstance(t['shortTitle'],str) or not t['shortTitle'].strip() or len(t['shortTitle'])>80):raise ValueError('Invalid short task title')
         if 'dueDate' in t:
             if not isinstance(t['dueDate'],str) or not re.fullmatch(r'\d{4}-\d{2}-\d{2}',t['dueDate']):raise ValueError('Invalid task deadline')
@@ -55,6 +72,9 @@ def publish(plan,root):
         prior={t['id']:t for t in prior_plan['tasks'] if t['category']=='Task'}
     for task in plan['tasks']:
         if task['category']!='Task':continue
+        if task.get('rolloverMode')=='stored':
+            task.pop('firstPlannedDate',None)
+            continue
         old=prior.get(task['id'])
         origin=task.get('firstPlannedDate')
         if not origin and old:

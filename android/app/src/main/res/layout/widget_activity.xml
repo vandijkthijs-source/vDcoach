@@ -1,0 +1,7 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/widget_root" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="center_vertical" android:padding="8dp" android:background="@drawable/widget_background">
+ <LinearLayout android:id="@+id/widget_input" android:layout_width="0dp" android:layout_weight="1" android:layout_height="44dp" android:orientation="vertical" android:gravity="center_vertical" android:paddingHorizontal="12dp" android:background="@drawable/widget_input_background" android:contentDescription="Typ een activiteit">
+  <TextView android:id="@+id/widget_title" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Activiteit typen…" android:textColor="#f5f7fb" android:includeFontPadding="false" android:textSize="13sp" android:maxLines="1" android:ellipsize="end"/>
+  <Chronometer android:id="@+id/widget_clock" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="00:00" android:textColor="#4da4ff" android:textSize="12sp" android:includeFontPadding="false" android:visibility="gone"/>
+ </LinearLayout>
+ <TextView android:id="@+id/widget_action" android:layout_width="64dp" android:layout_height="44dp" android:layout_marginStart="8dp" android:gravity="center" android:background="@drawable/widget_button" android:text="Start" android:textColor="#4da4ff" android:textStyle="bold" android:textSize="14sp" android:contentDescription="Typ en start activiteit"/>
+</LinearLayout>

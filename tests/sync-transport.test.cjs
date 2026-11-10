@@ -2,7 +2,7 @@ const {test}=require('node:test'),assert=require('node:assert/strict'),ts=requir
 function compile(name,deps={}){const m=new Module(name);m.require=k=>{if(k in deps)return deps[k];return require(k);};m._compile(ts.transpileModule(fs.readFileSync(path.join(__dirname,'../lib/'+name+'.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,name+'.cjs');return m.exports;}
 const model=compile('model'),merging=compile('sync-model',{'./model':model});
 const empty=()=>({version:1,coachUrl:'https://chatgpt.com/',days:{}});
-function harness(){const saved=new Map();const storage={getItem:async k=>saved.get(k)||null,setItem:async(k,v)=>saved.set(k,v)};const sync=compile('sync',{'@react-native-async-storage/async-storage':{default:storage},'./server-connection':{loadServerConnection:async()=>({url:'http://server:2285',token:'test'})},'./model':model,'./sync-model':merging});return {sync,saved};}
+function harness(){const saved=new Map();const storage={getItem:async k=>saved.get(k)||null,setItem:async(k,v)=>saved.set(k,v)};const sync=compile('sync',{'@react-native-async-storage/async-storage':{default:storage},'./server-connection':{loadServerConnection:async()=>({url:'http://server:2285',token:'test'})},'./model':model,'./day-lifecycle':{closePastDays:s=>s},'./sync-model':merging});return {sync,saved};}
 test('server plan arrives without separate plan fetch and edits round-trip with revision',async()=>{
  const {sync}=harness(),remote=empty();remote.days['2026-11-10']={...model.newDay('2026-11-10'),tasks:[],notes:'Server plan'};
  const original=global.fetch,calls=[];

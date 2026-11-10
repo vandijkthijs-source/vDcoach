@@ -1,7 +1,8 @@
+import type {ApplicationSnapshot,ApplicationUpdate} from './applications';
 export type Category = 'Task' | 'Habit' | 'Appointment';
 export type Task = { id: string; title: string; category: Category; done: boolean; priority: boolean; minutes: number; rollovers: number; firstPlannedDate?: string; shortTitle?:string; dueDate?:string; comment?:string };
 export type Day = { date: string; tasks: Task[]; notes: string; startId: string | null; closed: boolean };
-export type State = { version: 1; days: Record<string, Day>; coachUrl: string; darkMode?: boolean; hiddenFoodHistory?:string[] };
+export type State = { version: 1; days: Record<string, Day>; coachUrl: string; darkMode?: boolean; hiddenFoodHistory?:string[]; serverApplicationSnapshots?:Record<string,ApplicationSnapshot>; widgetActionIds?:string[]; applicationJournal?:ApplicationUpdate[] };
 export const id = () => `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 export function today() { return amsterdamToday(); }
 export function newDay(date: string): Day { return { date, tasks: ['Vitamine · ochtend', 'Creatine · middag'].map((title,i) => ({ id: `habit-${i}`, title, category: 'Habit', done: false, priority: false, minutes: 0, rollovers: 0 })), notes: '', startId: null, closed: false }; }
@@ -29,6 +30,9 @@ export function validateBackup(raw: string): State {
  const s = JSON.parse(raw);
  if (s?.version !== 1 || !s.days || typeof s.days !== 'object' || Array.isArray(s.days) || typeof s.coachUrl !== 'string') throw new Error('This is not a vDcoach backup.');
  if(s.hiddenFoodHistory!==undefined&&(!Array.isArray(s.hiddenFoodHistory)||s.hiddenFoodHistory.some((value:unknown)=>typeof value!=='string')))throw new Error('Ongeldige voedingshistorie.');
+ if(s.serverApplicationSnapshots!==undefined){if(!s.serverApplicationSnapshots||typeof s.serverApplicationSnapshots!=='object'||Array.isArray(s.serverApplicationSnapshots))throw Error('Ongeldige sollicitatiehistorie.');for(const [date,snapshot] of Object.entries(s.serverApplicationSnapshots)){if(!/^\d{4}-\d{2}-\d{2}$/.test(date))throw Error('Ongeldige sollicitatiedatum.');validateApplications(snapshot);}}
+ if(s.applicationJournal!==undefined){if(!Array.isArray(s.applicationJournal)||s.applicationJournal.length>10000)throw Error('Ongeldige sollicitatiewijzigingen.');const ids=new Set();for(const u of s.applicationJournal){if(!u||(u.operation!==undefined&&!['add','update','delete'].includes(u.operation))||typeof u.id!=='string'||ids.has(u.id)||typeof u.date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(u.date))throw Error('Ongeldige sollicitatiewijziging.');ids.add(u.id);validateApplications({updatedAt:u.updatedAt,items:[u.item]});}}
+ if(s.widgetActionIds!==undefined&&(!Array.isArray(s.widgetActionIds)||s.widgetActionIds.length>2000||s.widgetActionIds.some((v:unknown)=>typeof v!=='string')))throw new Error('Ongeldige widgetacties.');
  if(s.darkMode!==undefined&&typeof s.darkMode!=='boolean')throw new Error('Ongeldige weergavevoorkeur.');
  for (const [date,d] of Object.entries(s.days) as [string, any][]) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || d.date !== date || !Array.isArray(d.tasks) || typeof d.notes !== 'string' || typeof d.closed !== 'boolean' || !(d.startId === null || typeof d.startId === 'string')) throw new Error('Invalid day in backup.');
@@ -45,27 +49,32 @@ export function validateBackup(raw: string): State {
   for(const key of ['removedTaskIds','taskOverrides'])if(d[key]!==undefined&&(!Array.isArray(d[key])||d[key].some((id:unknown)=>typeof id!=='string')))throw new Error('Invalid task choices.');
   if(d.removedDiaryIds!==undefined&&(!Array.isArray(d.removedDiaryIds)||d.removedDiaryIds.some((id:unknown)=>typeof id!=='string')))throw new Error('Ongeldige verwijderde dagboekregels.');
   if(d.diaryEntries!==undefined){if(!Array.isArray(d.diaryEntries)||d.diaryEntries.some((e:DiaryEntry)=>typeof e.id!=='string'||typeof e.text!=='string'||!e.text.trim()||typeof e.done!=='boolean'||(e.appointmentId!==undefined&&typeof e.appointmentId!=='string')||(e.time!==undefined&&typeof e.time!=='string')||(e.note!==undefined&&typeof e.note!=='string'))||new Set(d.diaryEntries.map((e:DiaryEntry)=>e.id)).size!==d.diaryEntries.length)throw new Error('Ongeldig dagboek.');}
-  for(const e of d.diaryEntries??[]){for(const key of ['startTime','endTime','location'])if(e[key]!==undefined&&typeof e[key]!=='string')throw new Error('Ongeldige activiteit.');for(const key of ['allDay','edited'])if(e[key]!==undefined&&typeof e[key]!=='boolean')throw new Error('Ongeldige activiteit.');if(e.startTime!==undefined||e.endTime!==undefined)diaryTimeFields(e.startTime??'',e.endTime??'',e.allDay??false);}
+  for(const e of d.diaryEntries??[]){for(const key of ['startTime','endTime','location'])if(e[key]!==undefined&&typeof e[key]!=='string')throw new Error('Ongeldige activiteit.');for(const key of ['allDay','edited'])if(e[key]!==undefined&&typeof e[key]!=='boolean')throw new Error('Ongeldige activiteit.');// Historical entries may have equal rounded times or cross midnight.
+   // Preserve their original fields; only the activity editor requires a positive same-day range.
+   if(!e.allDay){if(e.startTime!==undefined)diaryTime(e.startTime);if(e.endTime!==undefined)diaryTime(e.endTime);}}
   if(d.foodEntries!==undefined){if(!Array.isArray(d.foodEntries)||d.foodEntries.some((e:FoodEntry)=>typeof e.id!=='string'||typeof e.text!=='string'||!e.text.trim())||new Set(d.foodEntries.map((e:FoodEntry)=>e.id)).size!==d.foodEntries.length)throw new Error('Ongeldige voedingslijst.');}
   if(d.foodNotes!==undefined&&typeof d.foodNotes!=='string')throw new Error('Ongeldige voedingsnotitie.');
   if(d.meals!==undefined){if(!Array.isArray(d.meals))throw new Error('Ongeldige voedingsgegevens.');for(const m of d.meals){if(typeof m.id!=='string'||typeof m.text!=='string'||typeof m.time!=='string'||typeof m.estimated!=='boolean'||['kcal','protein','carbs','fat'].some(k=>m[k]!==undefined&&(typeof m[k]!=='number'||!Number.isFinite(m[k])||m[k]<0)))throw new Error('Ongeldige voedingsgegevens.');}}
   if(d.plan!==undefined)validateMorningPlan(d.plan);
-  if (d.tasks.filter((t: Task)=>t.priority).length > 3) throw new Error('Backup contains too many priorities.');
+  // Saved user choices may retain priorities from tasks moved between days.
+  // Only incoming morning plans are limited to three priorities.
  }
  return s;
 }
 
 export type FoodEntry = {id:string;text:string};
 export type Meal = {id:string; text:string; time:string; kcal?:number; protein?:number; carbs?:number; fat?:number; estimated:boolean};
-export type MorningPlan = {version:1;date:string;generatedAt:string;tasks:Task[];startId:string|null;appointments:{id:string;title:string;start:string;end:string;note?:string}[];weather:string;sourceChecks:{name:string;ok:boolean;note?:string}[];warnings:string[]};
+export type MorningPlan = {applications?:ApplicationSnapshot;version:1;date:string;generatedAt:string;tasks:Task[];startId:string|null;appointments:{id:string;title:string;start:string;end:string;note?:string}[];weather:string;sourceChecks:{name:string;ok:boolean;note?:string}[];warnings:string[]};
 export type DailyRecord = Day & {deletedTasks?:Task[];removedTaskIds?:string[];taskOverrides?:string[];plan?:MorningPlan;meals?:Meal[];foodNotes?:string;foodEntries?:FoodEntry[];diaryEntries?:DiaryEntry[];removedDiaryIds?:string[]};
 export function amsterdamToday(){return new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Amsterdam',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());}
 export function validateMorningPlan(raw:unknown):MorningPlan {
  const p=raw as MorningPlan;
+ if(p?.applications!==undefined)validateApplications(p.applications);
  if(!p||p.version!==1||!/^\d{4}-\d{2}-\d{2}$/.test(p.date)||!Number.isFinite(Date.parse(p.generatedAt))||new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Amsterdam',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(p.generatedAt))!==p.date)throw Error('Ongeldige datum in dagplan.');
  if(!Array.isArray(p.tasks)||p.tasks.length>100||!Array.isArray(p.appointments)||!Array.isArray(p.sourceChecks)||!Array.isArray(p.warnings)||p.warnings.some(x=>typeof x!=='string')||typeof p.weather!=='string')throw Error('Onvolledig dagplan.');
  validateBackup(JSON.stringify({version:1,coachUrl:'',days:{[p.date]:{date:p.date,tasks:p.tasks,notes:'',startId:p.startId,closed:false}}}));
  if(p.startId!==null&&!p.tasks.some(t=>t.id===p.startId))throw Error('Starttaak ontbreekt.');
+ if(p.tasks.filter(t=>t.priority).length>3)throw Error('Een ochtendplan mag maximaal drie prioriteiten hebben.');
  for(const t of p.tasks)if(t.done)throw Error('Een ochtendplan mag niets automatisch afvinken.');
  for(const a of p.appointments)if(!a||typeof a.id!=='string'||typeof a.title!=='string'||!Number.isFinite(Date.parse(a.start))||!Number.isFinite(Date.parse(a.end))||Date.parse(a.end)<Date.parse(a.start)||(a.note!==undefined&&typeof a.note!=='string'))throw Error('Ongeldige afspraak.');
  for(const c of p.sourceChecks)if(!c||typeof c.name!=='string'||typeof c.ok!=='boolean'||(c.note!==undefined&&typeof c.note!=='string'))throw Error('Ongeldige broncontrole.');
@@ -150,3 +159,17 @@ export function swipeTask(state:State,date:string,taskId:string,action:'tomorrow
 }
 
 export function taskHandoff(task:Task):string {return `${task.title}${task.comment?.trim()?` — Opmerking: ${task.comment.trim()}`:''}`;}
+
+export function validateApplications(raw:unknown):ApplicationSnapshot {
+ const s=raw as ApplicationSnapshot;
+ if(!s||typeof s.updatedAt!=='string'||!/(Z|[+-]\d{2}:\d{2})$/.test(s.updatedAt)||!Number.isFinite(Date.parse(s.updatedAt))||!Array.isArray(s.items)||s.items.length>100)throw Error('Ongeldig sollicitatieoverzicht.');
+ const ids=new Set<string>();for(const a of s.items){
+  if(!a||['id','company','role','status','nextAction'].some(k=>typeof (a as any)[k]!=='string'||!(a as any)[k].trim()||(a as any)[k].length>2000)||ids.has(a.id)||!['waiting','action','interview','closed'].includes(a.stage))throw Error('Ongeldig sollicitatietraject.');ids.add(a.id);
+  if(a.color!==undefined&&!['green','orange','red'].includes(a.color))throw Error('Ongeldig statusbolletje.');
+  if(a.note!==undefined&&(typeof a.note!=='string'||a.note.length>4000))throw Error('Ongeldige sollicitatienotitie.');
+  if(a.acknowledgedUpdateId!==undefined&&(typeof a.acknowledgedUpdateId!=='string'||!a.acknowledgedUpdateId.trim()))throw Error('Ongeldige updatebevestiging.');
+  if(a.actionDate!==undefined&&(!/^\d{4}-\d{2}-\d{2}$/.test(a.actionDate)||!Number.isFinite(Date.parse(a.actionDate+'T00:00:00Z'))||new Date(a.actionDate+'T00:00:00Z').toISOString().slice(0,10)!==a.actionDate))throw Error('Ongeldige actiedatum.');
+  if(a.appointment!==undefined&&(!/(Z|[+-]\d{2}:\d{2})$/.test(a.appointment)||!Number.isFinite(Date.parse(a.appointment))))throw Error('Ongeldig gesprekstijdstip.');
+  if(a.url!==undefined&&!/^https:\/\//.test(a.url))throw Error('Ongeldige sollicitatielink.');
+ }return s;
+}

@@ -1,3 +1,4 @@
+import {closePastDays} from './day-lifecycle';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {loadServerConnection} from './server-connection';
 import {State,validateBackup} from './model';
@@ -15,7 +16,7 @@ export async function syncProgress(local:State):Promise<{state:State;sent:State;
   const remote=await request();
   validateBackup(JSON.stringify(remote.state));
   const base=saved?.url===url?validateBackup(JSON.stringify(saved.state)):firstSyncBase(local,remote.state);
-  const merged=sharedState(mergeProgress(base,local,remote.state));
+  const merged=sharedState(closePastDays(mergeProgress(base,local,remote.state)));
   const result=stable(merged)===stable(remote.state)?remote:await request({revision:remote.revision,state:merged});
   const state=validateBackup(JSON.stringify(result.state));
   return {state:{...local,...state},sent:local,url};

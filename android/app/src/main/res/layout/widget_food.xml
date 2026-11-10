@@ -1,0 +1,8 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/widget_root" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="12dp" android:background="@drawable/widget_background">
+<TextView android:id="@+id/widget_title" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Voeding" android:textColor="#f5f7fb" android:textStyle="bold" android:textSize="16sp" android:includeFontPadding="false"/>
+<TextView android:id="@+id/widget_subtitle" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:layout_marginBottom="6dp" android:text="Vandaag" android:textColor="#aeb9c8" android:textSize="11sp"/>
+<ListView android:id="@+id/widget_food_list" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:divider="@android:color/transparent" android:dividerHeight="4dp" android:scrollbars="vertical"/>
+<TextView android:id="@+id/widget_food_empty" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:gravity="center_vertical" android:text="Nog niets gegeten?
+Voeg je eerste item toe." android:textColor="#aeb9c8" android:textSize="12sp"/>
+<TextView android:id="@+id/widget_action" android:layout_width="match_parent" android:layout_height="40dp" android:layout_marginTop="6dp" android:background="@drawable/widget_button" android:gravity="center" android:text="＋ Toevoegen" android:textColor="#4da4ff" android:textStyle="bold" android:textSize="13sp" android:contentDescription="Voeding toevoegen"/>
+</LinearLayout>

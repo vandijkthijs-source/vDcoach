@@ -27,6 +27,13 @@ class Plans(unittest.TestCase):
    self.assertEqual(json.loads(publish(p,d).read_text())['tasks'][0]['rollovers'],3)
    p['date']='2026-10-28';p['generatedAt']='2026-10-28T07:00:00+01:00';del p['tasks'][0]['firstPlannedDate']
    self.assertEqual(json.loads(publish(p,d).read_text())['tasks'][0]['rollovers'],4)
+ def test_stored_rollover_is_not_recomputed_from_previous_plan(self):
+  with tempfile.TemporaryDirectory() as d:
+   p=plan();p['startId']=None;p['tasks']=[{'id':'beau','title':'Beau','category':'Task','done':False,'priority':True,'minutes':10,'rollovers':3,'firstPlannedDate':'2026-10-24'}]
+   publish(p,d)
+   p['date']='2026-10-28';p['generatedAt']='2026-10-28T07:00:00+01:00';p['tasks'][0].update(rolloverMode='stored',rollovers=2)
+   task=json.loads(publish(p,d).read_text())['tasks'][0]
+   self.assertEqual(task['rollovers'],2);self.assertNotIn('firstPlannedDate',task)
  def test_origin_cannot_be_future_or_a_habit(self):
   p=plan();p['tasks'][0]['firstPlannedDate']='2026-10-25'
   with self.assertRaises(ValueError):validate(p)
@@ -37,5 +44,14 @@ class Plans(unittest.TestCase):
   p['tasks'][0]['shortTitle']=''
   with self.assertRaises(ValueError):validate(p)
   p['tasks'][0]['shortTitle']='Vitamine';p['tasks'][0]['dueDate']='2026-02-30'
+  with self.assertRaises(ValueError):validate(p)
+ def test_optional_application_snapshot(self):
+  p=plan();p['applications']={'updatedAt':'2026-10-27T07:00:00+01:00','items':[{'id':'one','company':'Stedin','role':'AI Governance','status':'Ontvangen','stage':'waiting','nextAction':'Wachten'}]};validate(p)
+  p['applications']['items'].append(p['applications']['items'][0].copy())
+  with self.assertRaises(ValueError):validate(p)
+  p['applications']['items']=[];validate(p)
+ def test_application_updates_and_colors(self):
+  p=plan();p['applications']={'updatedAt':'2026-10-27T07:00:00+01:00','items':[{'id':'a','company':'Stedin','role':'Rol','status':'Gesloten','stage':'closed','color':'red','note':'Gebeld','acknowledgedUpdateId':'update-1','nextAction':'Geen'}]};validate(p)
+  p['applications']['items'][0]['color']='blue'
   with self.assertRaises(ValueError):validate(p)
 if __name__=='__main__':unittest.main()

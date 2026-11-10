@@ -23,7 +23,7 @@ cd /home/thijs/Projects/vDcoach/android
 ./gradlew assembleRelease
 ```
 
-De aanwezige node_modules is een link naar de bestaande vDfotos-dependencies. Voor een onafhankelijke installatie: verwijder alleen die link en draai `npm ci` in de projectmap. Persoonlijke release gebruikt de bestaande ontwikkelsleutel. Native clipboard zit in Android-bronnen: regenereer Android niet met Expo prebuild.
+Deze checkout heeft een eigen dependency-installatie volgens package-lock.json. Gebruik `npm ci` om deze opnieuw te installeren. Persoonlijke release gebruikt de bestaande ontwikkelsleutel. Native clipboard zit in Android-bronnen: regenereer Android niet met Expo prebuild.
 
 ## Verbinden
 
@@ -104,3 +104,49 @@ Vandaag toont korte taaktitels met uitklapbare volledige opdrachten. Maximaal dr
 Uitgeklapte taken hebben een vrij opmerkingenveld dat automatisch lokaal wordt bewaard. Opmerkingen gaan mee naar morgen en naar de gekopieerde dagstatus. Swipe rechts verplaatst naar morgen; swipe links verwijdert. Vanaf deze versie worden verwijderde taken met hun volledige tekst en opmerking bewaard in een daglogboek voor ‘Verwijderd uit de daglijst’ in de avondoverdracht. Dat is geen afronding en geen automatische Drive-wijziging. Oude verwijderingen zonder bewaarde taaktekst worden niet achteraf verzonnen. Tijdens typen in de opmerking is vegen tijdelijk uitgeschakeld om onbedoeld verwijderen te voorkomen.
 
 Voedingsregels zijn direct bewerkbaar door op de tekst te tikken. Opslaan of Enter wijzigt dezelfde regel op dezelfde plaats, zonder een extra maaltijd toe te voegen; Annuleren bewaart de oorspronkelijke invoer. De timerkaart blijft na starten open, leegt het titelveld en biedt ruimte om de volgende activiteit alvast te typen. Stoppen bewaart de lopende activiteit onder de oorspronkelijke titel en laat die volgende titel staan voor de volgende start.
+
+
+### Android-startschermwidgets
+- Taken 2×3: scrollbare lijst met gewone taken, open prioriteiten eerst. Tik een taak om af te vinken; via ＋ Toevoegen maak je in een klein native typvenster een nieuwe taak. Die verschijnt direct in de widget, kan meteen worden afgevinkt en wordt bij synchronisatie zonder dubbelen overgenomen in Vandaag. Gewoontes blijven in de app. Afgesloten dagen laten geen toevoegingen toe. Titel opent de app.
+- Voeding 2×2: aantal regels en laatst toegevoegde voeding. Tik Toevoegen voor een klein tekstvenster; Enter/Toevoegen bewaart een vrije tekstregel en leegt het veld voor de volgende. Annuleren sluit het venster.
+- Activiteit 4×1: tik op Activiteit typen… of Start om meteen een klein native invoervenster te openen, zonder de volledige React-app. Android RemoteViews ondersteunt geen EditText ín een startschermwidget. Start in het typvenster keert terug naar de widget; die toont de titel, een lopende chronometer en Stop. Vóór starten staat de klok op 00:00. Stop bewaart de activiteit voor Dagboek. Gebruikt dezelfde notificatie, timer en voltooiingswachtrij als de app.
+Na installatie eenmaal de app openen, daarna lang drukken op het startscherm → Widgets → vDcoach. De opgegeven standaardmaten volgen Android-gridcellen; de launcher bepaalt de uiteindelijke afmetingen. Widgets zijn vergroot/verkleinbaar. Kleuren volgen de laatst opgeslagen dark-modevoorkeur.
+Widgets tonen de laatst gesynchroniseerde lokale appstatus; ze halen zelf geen laptop- of Drive-plan op. Voedingsinvoer en vinkjes werken zonder React actief en blijven bewaard in een private native wachtrij. Bij openen van de app (of binnen twee seconden terwijl die actief is) worden acties op hun oorspronkelijke Amsterdam-datum geïmporteerd. Actie-ID's voorkomen herhaling; pas na succesvolle opslag van de appstatus wordt de native wachtrij bevestigd. Afgesloten dagen worden niet gewijzigd. Native afgeronde timers worden op dezelfde manier als bestaande timers geïmporteerd bij het openen van de app.
+Geen extra diensten, API's of abonnementen. Native widgetinstallatie en launcherweergave moeten nog op een fysieke Samsung worden gecontroleerd; Kotlin-compilatie, Android-resourcevalidatie en synchronisatietests zijn zonder APK-build uitgevoerd.
+
+Widgetuitbreiding 1 november 2026: taken toevoegen wordt ook getest op offline toevoegen plus afvinken, opnieuw importeren, back-upherstel, afgesloten dagen en titelvalidatie. Native invoer en launcherweergave moeten op een fysieke telefoon worden gecontroleerd; geen APK of telefooninstallatie uitgevoerd.
+
+
+### Sollicitaties en instellingen
+De onderste navigatie heeft Vandaag, Dagboek, Voeding en Sollicitaties. Instellingen opent als apart venster via het tandwiel rechtsboven. Alle bestaande instellingen en vorige dagen blijven daar beschikbaar.
+De Sollicitaties-tab toont de nieuwste gecontroleerde `applications`-momentopname uit de ochtendplannen: actie nodig, gesprek gepland en wachten op reactie. Kaarten klappen open voor vervolgstap, actiedatum, gesprekstijd en bronlink. Gesloten/afgewezen trajecten en losse vacatureverkenningen horen niet in deze momentopname. Een oriënterend contact of conceptaanvraag wordt expliciet zo benoemd. Een actiedatum is geen afspraak of deadline.
+De nieuwe sollicitatiewidget is standaard 2×3 en kan worden vergroot. Hij toont dezelfde scrollbare lijst uit de lokale appstatus. Tik op een kaart of titel om de Sollicitaties-tab te openen. Open de app na installatie eenmaal om de widgets bij te werken.
+De ochtendrun leest tracker en relevante mail en publiceert `applications: {updatedAt, items}` naast het dagplan. Een ontbrekende momentopname behoudt de vorige; een expliciete lege items-lijst wist het overzicht. Oudere dagplannen/back-ups blijven compatibel. Geen betaalde API of rechtstreekse externe schrijfacties vanuit app of widget.
+
+
+### Compacte sollicitatiestatus en dagoverdracht
+Sollicitaties verschijnen als compacte regels met een groen (positief/gesprek), oranje (lopend/actie) of rood (afgesloten) bolletje. Tik op een regel en kies Bijwerken om status, fase, kleur, vervolgstap, opmerking en actiedatum te wijzigen. Bij afsluiten worden status en vervolgstap op Afgesloten / Geen vervolgactie gezet; je kunt de tekst aanpassen. Afgesloten trajecten blijven onder een uitklapbaar archief, niet tussen actieve widgetregels.
+Elke bewerking wordt lokaal met Update-ID en tijdstip bewaard in applicationJournal. Dagstatus kopiëren bevat het actuele overzicht én de wijzigingen van de gekozen dag, inclusief notities, bronlinks en bekende datums. Geef dit door aan de coach om op expliciet verzoek tracker/Drive bij te werken; de app schrijft die externe bronnen niet zelf.
+Een ochtendplan overschrijft een lokale bewerking niet totdat applications.items.acknowledgedUpdateId exact de betreffende laatste Update-ID bevestigt. Na die bevestiging kunnen nieuwe gecontroleerde bronupdates weer worden gevolgd. Zonder bevestiging blijft de wijziging ook bij een lege/ontbrekende bronmomentopname behouden. De widget toont dezelfde samengevoegde appstatus.
+
+
+### Sollicitaties terugkijken per dag
+Korte kopjes splitsen de lijst in Actie nodig, Gesprekken en Wacht op reactie, met Afgesloten apart. De pijlen bij de datum gaan een kalenderdag terug/vooruit; tik op de datum om terug te keren naar vandaag. De datum van Sollicitaties is onafhankelijk van Vandaag/Dagboek. Toekomstige dagen zijn niet selecteerbaar.
+Eerdere dagen tonen de laatst bekende opgeslagen momentopname tot en met die Amsterdam-dag, met alleen lokale wijzigingen die toen al waren vastgelegd. Nieuwe reacties of latere bevestigingen veranderen eerdere dagen niet achteraf. Eerdere dagen zijn alleen-lezen. Bij geen opgeslagen gegevens wordt geen historie verzonnen; de app toont een lege melding. Historie begint bij de eerste daadwerkelijk bewaarde sollicitatiemomentopname. Binnen dezelfde dag blijft de laatste opgeslagen bronversie leidend; er is geen archief van iedere verversing.
+Dagstatus kopiëren voor een eerdere dag gebruikt dezelfde historische sollicitatiestand en het wijzigingslog van die dag.
+
+
+### Sollicitaties toevoegen en verwijderen
+Onder de lijst staat Sollicitatie toevoegen. Vul organisatie en functie in en kies status/fase; standaard is dit nog niet gesolliciteerd. Bij uitgeklapte bestaande regels staat Verwijderen naast Bijwerken. Na verwijderen kun je de laatste verwijdering ongedaan maken zolang je op dezelfde weergave blijft.
+Toevoegingen, wijzigingen en verwijderingen worden met volledige inhoud en tijdstip in het lokale wijzigingslog bewaard. Verwijderen verbergt de regel uit app en widget en beschermt tegen terugzetten door oude brondata; eerdere dagen blijven de toenmalige stand tonen. Dit trekt geen sollicitatie in en verwijdert geen trackerhistorie. De dagoverdracht noemt de handeling expliciet en de ochtendprompt respecteert deze keuze.
+
+## Bouwen op deze laptop
+
+De actieve checkout is `/home/thijs/Projects/vDcoach`. Bouw zelf met:
+
+```bash
+cd ~/Projects/vDcoach/android
+./gradlew assembleRelease
+```
+
+Gebruik Java 17 en de bestaande Android SDK; `android/local.properties` blijft lokaal. De oorspronkelijke signing key blijft behouden. Start op deze bouwlaptop geen productieserver of tunnel.

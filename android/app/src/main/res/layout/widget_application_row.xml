@@ -1,0 +1,7 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/widget_application_row" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:paddingHorizontal="7dp" android:paddingVertical="7dp">
+<TextView android:id="@+id/widget_application_dot" android:layout_width="16dp" android:layout_height="wrap_content" android:text="●" android:textSize="10sp" android:textColor="#f2ad59"/>
+<LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical">
+<TextView android:id="@+id/widget_company" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Organisatie" android:textColor="#f5f7fb" android:textSize="12sp" android:textStyle="bold" android:includeFontPadding="false"/>
+<TextView android:id="@+id/widget_role" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Functie" android:textColor="#aeb9c8" android:textSize="11sp" android:includeFontPadding="false"/>
+<TextView android:id="@+id/widget_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:visibility="gone" android:textSize="10sp"/>
+</LinearLayout></LinearLayout>

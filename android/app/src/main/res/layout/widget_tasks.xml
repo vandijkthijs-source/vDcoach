@@ -1,0 +1,6 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/widget_root" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="14dp" android:background="@drawable/widget_background">
+<TextView android:id="@+id/widget_title" android:layout_width="match_parent" android:layout_height="40dp" android:text="Taken" android:textColor="#f5f7fb" android:textStyle="bold" android:textSize="17sp" android:gravity="center_vertical"/>
+<ListView android:id="@+id/widget_list" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:divider="@android:color/transparent" android:dividerHeight="3dp"/>
+<TextView android:id="@+id/widget_empty" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Open de app voor je daglijst" android:textColor="#aeb9c8" android:textSize="13sp"/>
+<TextView android:id="@+id/widget_action" android:layout_width="match_parent" android:layout_height="44dp" android:layout_marginTop="6dp" android:background="@drawable/widget_button" android:gravity="center" android:text="＋ Toevoegen" android:textColor="#4da4ff" android:textStyle="bold" android:textSize="14sp" android:contentDescription="Taak toevoegen"/>
+</LinearLayout>

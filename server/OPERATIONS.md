@@ -286,3 +286,29 @@ Daily cloud scheduling is configured for 07:00 Europe/Stockholm. See APP-UPDATE.
 until the ChatGPT Scheduled entry and a real tool run have been verified. Do not
 mistake source code readiness for a running scheduled task. No recurring model
 API billing was configured as part of this work.
+
+
+## Automatische dagcyclus (10 november 2026)
+
+De bestaande server sluit elke 30 seconden alle opgeslagen dagen vóór de huidige
+Amsterdamse datum. Zomer-/wintertijd wordt via Europe/Amsterdam bepaald. Er wordt
+geen taak afgevinkt en geen ontbrekende voeding/activiteit verzonnen. Na serveruitval
+loopt dezelfde controle bij starten en coachcontext door. Er draait geen tweede server.
+De telefoon sluit lokaal na middernacht bij hervatten of de actieve minuutcontrole;
+Android hoeft hiervoor niet permanent op de achtergrond te draaien. Offline invoer en
+widgetinvoer mogen later nog op de gesloten dag aankomen.
+
+GET /day-reviews geeft pending dagen met exact inputHash plus bestaande completed
+verslagen. POST /day-review bewaart summary en optionele geschatte nutrition. Het
+inputHash omvat de invoer en sollicitatiewijzigingen van de dag. Een gewijzigde dag
+wordt opnieuw pending; herhaalde afronding van dezelfde hash is idempotent. Originele
+invoer blijft intact; eerdere verslagen blijven in SQLite voor herstel. Deze tabel gaat
+mee in de bestaande versleutelde databasebackup, zonder nieuw backupsysteem.
+
+De bestaande ChatGPT-cloudtaak om 07:00 verwerkt eerst pending dagen, bewaart bevestigde
+feiten in het serverdagboek en maakt vervolgens het nieuwe plan. Geen aparte avondchat,
+geen betaalde API. De oude Codex-taak is uitsluitend een leescontrole geworden zodat hij
+geen tweede plan publiceert. De serverupdate moet eerst op de serverlaptop worden toegepast,
+waarna de bestaande service en MCP/tunnelprocessen hun nieuwe code moeten laden.
+De nieuwe MCP-tools heten get_day_reviews en finish_day_review. Als ze in ChatGPT nog
+ontbreken moet de bestaande pluginverbinding de nieuwe toollijst opnieuw laden.

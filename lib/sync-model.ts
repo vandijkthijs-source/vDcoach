@@ -1,7 +1,7 @@
 import {State,validateBackup,newDay} from './model';
 
 export function sharedState(state:State):State {
- return {version:1,coachUrl:state.coachUrl,days:state.days};
+ return {version:1,coachUrl:state.coachUrl,days:state.days,...(state.applicationJournal?{applicationJournal:state.applicationJournal}:{})};
 }
 export function stable(value:any):string {
  if(value===undefined)return 'undefined';

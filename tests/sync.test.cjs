@@ -28,3 +28,13 @@ test('server replaces legacy plan metadata while retaining phone task progress',
  const {firstSyncBase}=compile('sync-model',model);const result=mergeProgress(firstSyncBase(local,remote),local,remote);
  assert.equal(result.days['2026-11-10'].plan.generatedAt,'2026-11-10T07:00:00+01:00');assert.equal(result.days['2026-11-10'].tasks[0].done,true);
 });
+
+test('independent application journal entries merge and stay available to day processing',()=>{
+ const base=initial(),local=clone(base),remote=clone(base);
+ const item={id:'role',company:'Company',role:'Role',status:'Waiting',stage:'waiting',nextAction:'Wait'};
+ local.applicationJournal=[{id:'phone-change',date:'2026-11-10',updatedAt:'2026-11-10T10:00:00+01:00',item}];
+ remote.applicationJournal=[{id:'server-change',date:'2026-11-10',updatedAt:'2026-11-10T10:10:00+01:00',item:{...item,id:'second'}}];
+ const {sharedState}=compile('sync-model',model);
+ const merged=mergeProgress(base,local,remote);
+ assert.deepEqual(new Set(sharedState(merged).applicationJournal.map(u=>u.id)),new Set(['phone-change','server-change']));
+});

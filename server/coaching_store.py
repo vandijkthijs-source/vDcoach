@@ -6,6 +6,7 @@ import time
 from plan_store import validate
 from progress_store import Conflict, text, valid_date
 from library_store import LOCK
+from day_review import DayReviews
 
 
 class CoachingStore:
@@ -104,10 +105,12 @@ class CoachingStore:
 
     def context(self, date):
         valid_date(date)
+        reviews = DayReviews(self.progress)
+        reviews.close_past_days()
         current = self.progress.read()
         previous = (dt.date.fromisoformat(date)-dt.timedelta(days=1)).isoformat()
-        return {'date': date, 'serverTime':dt.datetime.now(dt.timezone.utc).isoformat(), 'timezone':'Europe/Stockholm', 'revision':current['revision'], 'day':current['state']['days'].get(date),
-                'previousDay':current['state']['days'].get(previous), 'applications':self.applications(),
+        return {'date': date, 'serverTime':dt.datetime.now(dt.timezone.utc).isoformat(), 'timezone':'Europe/Amsterdam', 'revision':current['revision'], 'day':current['state']['days'].get(date),
+                'previousDay':current['state']['days'].get(previous), 'dayReviews':reviews.queue(), 'applications':self.applications(),
                 'documents':self.library.list(),
                 'rules':['The server is canonical; Drive is backup.',
                          'Read relevant current documents and retain their IDs/revisions before writing.',

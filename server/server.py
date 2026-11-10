@@ -16,6 +16,7 @@ from progress_store import ProgressStore, Conflict
 from tunnel_status import tunnel_status
 from library_store import LibraryStore
 from coaching_store import CoachingStore
+from day_review import DayReviews
 
 ROOT = Path(os.environ.get('VDCOACH_DATA', Path(__file__).parent / 'data'))
 ROOT.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -33,6 +34,7 @@ with sqlite3.connect(DB) as db:
 os.chmod(DB, 0o600)
 STORE = ProgressStore(DB)
 LIBRARY = LibraryStore(ROOT)
+REVIEWS = DayReviews(STORE)
 COACH = CoachingStore(STORE, LIBRARY)
 LIBRARY.materialize_folders()
 STARTED = time.time()
@@ -62,6 +64,8 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if not self.authorized(): return
         parsed = urlparse(self.path)
+        if parsed.path == '/day-reviews':
+            return self.reply(200, REVIEWS.queue())
         if parsed.path == '/folders':
             return self.reply(200, LIBRARY.folders())
         if parsed.path == '/folder':
@@ -133,14 +137,14 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         if not self.authorized(): return
-        if self.path in ('/coach-plan','/applications'):
+        if self.path in ('/coach-plan','/applications','/day-review'):
             try:
                 length = int(self.headers.get('Content-Length','0'))
                 if not 0 < length <= MAX_BYTES:
                     return self.reply(413, {'error':'Request too large or empty'})
                 self.connection.settimeout(15)
                 args = json.loads(self.rfile.read(length))
-                result = COACH.publish_plan(args) if self.path == '/coach-plan' else COACH.save_application(args)
+                result = REVIEWS.finish(args) if self.path == '/day-review' else COACH.publish_plan(args) if self.path == '/coach-plan' else COACH.save_application(args)
                 return self.reply(200, result)
             except Conflict as error:
                 return self.reply(409, {'error':str(error)})
@@ -195,10 +199,20 @@ class Handler(BaseHTTPRequestHandler):
         except (OSError, ValueError):
             return {'state': 'needs_connection', 'message': 'Google Drive nog koppelen'}
 
+def close_days_forever():
+    while True:
+        try:
+            REVIEWS.close_past_days()
+        except (sqlite3.Error, ValueError):
+            print('Automatic day closure failed; retrying in 30 seconds.', flush=True)
+        time.sleep(30)
+
+
 if __name__ == '__main__':
     host = os.environ.get('VDCOACH_HOST', '127.0.0.1')
     port = int(os.environ.get('VDCOACH_PORT', '2285'))
     print(f'vDcoach backup service: {host}:{port}. Token stored at {TOKEN_FILE}.', flush=True)
+    threading.Thread(target=close_days_forever, daemon=True).start()
     from dashboard import make_dashboard
     dashboard = make_dashboard(Handler)
     threading.Thread(target=dashboard.serve_forever, daemon=True).start()
