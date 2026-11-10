@@ -1,3 +1,9 @@
+> Actuele versie: **1.2.1** — servergestuurde synchronisatie en veilig opstartherstel.
+> Bouw op de ontwikkellaptop; deze Latitude is de productieserver.
+> Zie [overdracht voor de bouwlaptop](docs/BUILD-LAPTOP-HANDOFF.md) en
+> [appkoppeling](server/APP-UPDATE.md). Oudere beschrijvingen hieronder bevatten
+> historische UI- en overdrachtsflows; de huidige app gebruikt server-synchronisatie.
+
 # vDcoach — ochtendoverzicht
 
 Nederlandse Android-app met vier tabs:

@@ -6,9 +6,9 @@ export const id = () => `${Date.now()}-${Math.random().toString(36).slice(2, 9)}
 export function today() { return amsterdamToday(); }
 export function newDay(date: string): Day { return { date, tasks: ['Vitamine · ochtend', 'Creatine · middag'].map((title,i) => ({ id: `habit-${i}`, title, category: 'Habit', done: false, priority: false, minutes: 0, rollovers: 0 })), notes: '', startId: null, closed: false }; }
 export function getStart(day: Day) { return day.tasks.find(t => t.id === day.startId && !t.done) ?? day.tasks.find(t => t.priority && !t.done) ?? day.tasks.find(t => !t.done && t.category === 'Task'); }
-export const PLAN_INSTRUCTIONS = `Return my plan as JSON in a code block using exactly this format:\n{"tasks":[{"title":"Concrete action with a clear finish","category":"Task","priority":true,"minutes":15}],"startIndex":0}\nCategories: Task, Habit, Appointment. Maximum three priorities. startIndex is the zero-based index of the next action. Include all tasks and habits, not just priorities. Do not mark anything completed unless I confirmed it. I will preview this plan in vDcoach before importing.`;
+export const PLAN_INSTRUCTIONS = 'Read the current day and relevant documents through vDcoach. Save the plan directly to the server with source references and the current revision. Keep confirmed progress. Maximum three priorities. Never infer completion.';
 export function checkIn(day: Day, kind: 'Morning' | 'Help' | 'Evening') {
- return `${kind} check-in — ${day.date}\n\n${day.tasks.map(t => `${t.done ? '[x]' : '[ ]'} ${t.priority ? '★ ' : ''}${t.title}${t.minutes ? ` — ±${t.minutes} min` : ''} (${t.category})${t.rollovers ? ` ↻${t.rollovers}` : ''}`).join('\n')}\n\nSTART HIER: ${getStart(day)?.title ?? 'Choose the next action together.'}\n\nMy notes:\n${day.notes || '(none)'}\n\n${kind === 'Evening' ? 'Review my day and unfinished tasks. Do not update Drive until I explicitly ask to process the day. Never infer completion.\n\n' : kind === 'Help' ? 'Help me choose one concrete next action. If I am stuck, reduce it to five minutes.\n\n' : 'Help me plan today using my coaching agreements. Check the connected calendars if available; this app has not checked them.\n\n'}${PLAN_INSTRUCTIONS}`;
+ return `${kind} check-in — ${day.date}\n\n${day.tasks.map(t => `${t.done ? '[x]' : '[ ]'} ${t.priority ? '★ ' : ''}${t.title}${t.minutes ? ` — ±${t.minutes} min` : ''} (${t.category})${t.rollovers ? ` ↻${t.rollovers}` : ''}`).join('\n')}\n\nSTART HIER: ${getStart(day)?.title ?? 'Choose the next action together.'}\n\nMy notes:\n${day.notes || '(none)'}\n\n${kind === 'Evening' ? 'Review my day and unfinished tasks. The server is canonical. Read and update the saved day through vDcoach; Drive is backup. Never infer completion.\n\n' : kind === 'Help' ? 'Help me choose one concrete next action. If I am stuck, reduce it to five minutes.\n\n' : 'Help me plan today using my coaching agreements. Check the connected calendars if available; this app has not checked them.\n\n'}${PLAN_INSTRUCTIONS}`;
 }
 export function parsePlan(input: string): { tasks: Task[]; startId: string | null } {
  const cleaned = input.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
@@ -73,6 +73,7 @@ export function validateMorningPlan(raw:unknown):MorningPlan {
 }
 export function mergeMorningPlan(day:DailyRecord,plan:MorningPlan):DailyRecord {
  if(day.date!==plan.date)throw Error('Dagplan hoort bij een andere dag.');
+ if(day.closed)return day;
  if(day.plan&&Date.parse(plan.generatedAt)<=Date.parse(day.plan.generatedAt))return day;
  const old=new Map(day.tasks.map(t=>[t.id,t]));
  const merged=plan.tasks.filter(t=>!day.removedTaskIds?.includes(t.id)).map(t=>day.taskOverrides?.includes(t.id)&&old.has(t.id)?old.get(t.id)!:({...t,done:old.get(t.id)?.done??false,...(old.get(t.id)?.comment!==undefined?{comment:old.get(t.id)!.comment}:{})}));

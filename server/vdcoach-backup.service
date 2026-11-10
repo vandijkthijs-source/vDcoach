@@ -1,0 +1,14 @@
+[Unit]
+Description=vDcoach encrypted Drive backup and verified recovery
+After=vdcoach.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 %h/Documents/ChatGPT/VdCoach/server/cloud_backup.py
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%h/Documents/ChatGPT/VdCoach/server/backups
+ReadWritePaths=%h/Documents/ChatGPT/VdCoach/server/data

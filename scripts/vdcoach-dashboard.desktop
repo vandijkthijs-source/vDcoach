@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=vDcoach Server
+Comment=Open your private vDcoach dashboard
+Exec=xdg-open http://127.0.0.1:2286/
+Icon=/home/thijs/Documents/ChatGPT/VdCoach/server/dashboard/icon.svg
+Terminal=false
+Categories=Utility;
+StartupNotify=true

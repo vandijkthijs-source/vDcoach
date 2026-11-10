@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=vDcoach Connect ChatGPT
+Comment=Securely enter the runtime key and start your private tunnel
+Exec=x-terminal-emulator -e /usr/bin/python3 /home/thijs/Documents/ChatGPT/VdCoach/scripts/connect_chatgpt.py
+Icon=/home/thijs/Documents/ChatGPT/VdCoach/server/dashboard/icon.svg
+Terminal=false
+Categories=Utility;

@@ -9,6 +9,9 @@ android/local.properties
 work/
 outputs/
 server/data/
+server/backups/
+server/.venv/
+server/bin/
 __pycache__/
 *.py[cod]
 .env
@@ -26,3 +29,6 @@ __pycache__/
 
 # Signing keys stay local
 *.keystore
+
+# Separate Sites-managed information page repository
+/sites/backup-info/

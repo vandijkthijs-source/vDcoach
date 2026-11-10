@@ -25,6 +25,12 @@ class BackupTests(unittest.TestCase):
                 with self.assertRaises(HTTPError) as err: urlopen(url)
                 self.assertEqual(err.exception.code, 401)
                 headers = {'Authorization': 'Bearer ' + mod.TOKEN, 'Content-Type': 'application/json'}
+                health_url = url.replace('/backup', '/health')
+                with self.assertRaises(HTTPError) as unauthorized:
+                    urlopen(health_url)
+                self.assertEqual(unauthorized.exception.code, 401)
+                with urlopen(Request(health_url, headers=headers)) as response:
+                    self.assertEqual(json.load(response)['status'], 'ok')
                 body = {'version': 1, 'coachUrl': 'https://chatgpt.com/', 'days': {}}
                 with urlopen(Request(url, data=json.dumps(body).encode(), headers=headers)) as r:
                     self.assertEqual(r.status, 201)
