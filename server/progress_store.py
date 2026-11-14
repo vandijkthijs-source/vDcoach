@@ -28,6 +28,21 @@ def text(value, maximum=4000):
 def validate_state(state):
     if not isinstance(state, dict) or type(state.get('version')) is not int or state.get('version') != 1 or not isinstance(state.get('days'), dict) or not isinstance(state.get('coachUrl'), str):
         raise ValueError('Invalid vDcoach state')
+    if 'planningEnd' in state and (not isinstance(state['planningEnd'],str) or not re.fullmatch(r'(?:(?:[01]\d|2[0-3]):[0-5]\d|24:00)',state['planningEnd'])): raise ValueError('Invalid planning end')
+    if 'projects' in state:
+        projects=state['projects']
+        if not isinstance(projects,list) or len(projects)>200: raise ValueError('Invalid projects')
+        seen=set()
+        for project in projects:
+            if not isinstance(project,dict) or not isinstance(project.get('id'),str) or project['id'] in seen or type(project.get('archived')) is not bool or not isinstance(project.get('nextStep'),str): raise ValueError('Invalid project')
+            text(project.get('title')); seen.add(project['id'])
+            if project.get('deadline'): valid_date(project['deadline'])
+    if 'backlogTasks' in state:
+        if not isinstance(state['backlogTasks'],list) or len(state['backlogTasks'])>1000: raise ValueError('Invalid backlog')
+        for task in state['backlogTasks']:
+            if not isinstance(task,dict) or task.get('category')!='Task': raise ValueError('Invalid backlog task')
+            text(task.get('id'),200); text(task.get('title'))
+            validate_state({'version':1,'coachUrl':'','days':{'9999-12-31':{'date':'9999-12-31','tasks':[task],'notes':'','startId':None,'closed':False}}})
     if 'darkMode' in state and type(state['darkMode']) is not bool:
         raise ValueError('Invalid display preference')
     if 'hiddenFoodHistory' in state and (not isinstance(state['hiddenFoodHistory'], list) or any(not isinstance(v, str) for v in state['hiddenFoodHistory'])):
@@ -46,6 +61,10 @@ def validate_state(state):
             text(task.get('title'))
             if task['id'] in ids or task.get('category') not in ('Task', 'Habit', 'Appointment') or any(type(task.get(k)) is not bool for k in ('done', 'priority')) or any(type(task.get(k)) is not int or task[k] < 0 for k in ('minutes', 'rollovers')):
                 raise ValueError('Invalid task')
+            if task.get('status','todo') not in ('todo','waiting','parked'): raise ValueError('Invalid task status')
+            for field in ('area','firstStep','waitingUntil'):
+                if field in task and (not isinstance(task[field],str) or len(task[field])>4000): raise ValueError('Invalid coach metadata')
+            if task.get('waitingUntil'): valid_date(task['waitingUntil'])
             ids.add(task['id'])
             for field in ('shortTitle', 'comment'):
                 if field in task and (not isinstance(task[field], str) or len(task[field]) > (80 if field == 'shortTitle' else 4000)):
@@ -57,8 +76,7 @@ def validate_state(state):
                     valid_date(task[field])
             if 'firstPlannedDate' in task and (task['firstPlannedDate'] > date or task['category'] != 'Task'):
                 raise ValueError('Invalid task origin')
-        if sum(task['priority'] for task in day['tasks']) > 3:
-            raise ValueError('At most three priorities')
+        # Incoming morning plans enforce max three; historical user choices are preserved.
         for field in ('diaryEntries', 'foodEntries'):
             entries = day.get(field, [])
             if not isinstance(entries, list) or len(entries) > 10000:
@@ -80,6 +98,14 @@ def validate_state(state):
                         if key in entry and type(entry[key]) is not bool:
                             raise ValueError('Invalid diary flag')
                     times(entry.get('startTime', ''), entry.get('endTime', ''), entry.get('allDay', False))
+        if 'energy' in day and day['energy'] not in ('low','normal','high'): raise ValueError('Invalid day preference')
+        if 'focusChoices' in day:
+            if not isinstance(day['focusChoices'],list) or len(day['focusChoices'])>1000: raise ValueError('Invalid focus choices')
+            for choice in day['focusChoices']:
+                if not isinstance(choice,dict) or not isinstance(choice.get('id'),str) or type(choice.get('until')) not in (int,float) or not math.isfinite(choice['until']): raise ValueError('Invalid focus choice')
+        for entry in day.get('diaryEntries',[]):
+            if 'taskId' in entry and not isinstance(entry['taskId'],str): raise ValueError('Invalid task reference')
+            if 'focusSeconds' in entry and (type(entry['focusSeconds']) not in (int,float) or not math.isfinite(entry['focusSeconds']) or entry['focusSeconds']<0): raise ValueError('Invalid focus duration')
         for field in ('removedTaskIds', 'taskOverrides', 'removedDiaryIds'):
             if field in day and (not isinstance(day[field], list) or any(not isinstance(v, str) for v in day[field])):
                 raise ValueError('Invalid removed IDs')
@@ -115,6 +141,15 @@ def times(start, end, all_day=False):
         raise ValueError('Use valid start/end times; end must follow start')
 
 
+class ClosingConnection(sqlite3.Connection):
+    """Commit/rollback normally, then release SQLite's file handles immediately."""
+    def __exit__(self, *args):
+        try:
+            return super().__exit__(*args)
+        finally:
+            self.close()
+
+
 class ProgressStore:
     def __init__(self, path):
         self.path = path
@@ -124,7 +159,7 @@ class ProgressStore:
             db.execute('CREATE TABLE IF NOT EXISTS snapshots (id INTEGER PRIMARY KEY, created REAL NOT NULL, body TEXT NOT NULL)')
 
     def connect(self):
-        return sqlite3.connect(self.path, timeout=15)
+        return sqlite3.connect(self.path, timeout=15, factory=ClosingConnection)
 
     def read(self, db=None):
         if db is None:

@@ -12,7 +12,7 @@ from progress_store import Conflict, text, valid_date
 def fingerprint(state, date):
     day = {k:v for k,v in state['days'][date].items() if k not in ('plan', 'planSources')}
     updates = [u for u in state.get('applicationJournal', []) if u.get('date') == date]
-    body = json.dumps({'day':day,'applicationUpdates':updates},sort_keys=True,ensure_ascii=False,separators=(',', ':'))
+    body = json.dumps({'day':day,'facts':day_facts(day),'applicationUpdates':updates},sort_keys=True,ensure_ascii=False,separators=(',', ':'))
     return hashlib.sha256(body.encode()).hexdigest()
 
 
@@ -45,7 +45,7 @@ class DayReviews:
                 if row:
                     completed.append({'date':date,'inputHash':stamp,'reviewedAt':row[0],**json.loads(row[1])})
                 else:
-                    pending.append({'date':date,'inputHash':stamp,'day':day,'applicationUpdates':[u for u in state.get('applicationJournal',[]) if u.get('date')==date]})
+                    pending.append({'date':date,'inputHash':stamp,'day':day,'facts':day_facts(day),'applicationUpdates':[u for u in state.get('applicationJournal',[]) if u.get('date')==date]})
             return {'pending':pending,'completed':completed}
 
     def finish(self, args):
@@ -72,3 +72,12 @@ class DayReviews:
             reviewed = time.time()
             db.execute('INSERT INTO day_reviews VALUES (?,?,?,?)',(date,stamp,reviewed,json.dumps(body,ensure_ascii=False)))
             return {'date':date,'inputHash':stamp,'reviewedAt':reviewed,**body}
+
+
+def day_facts(day):
+    tasks=[t for t in day.get('tasks',[]) if t.get('category')=='Task']
+    actual=[e for e in day.get('diaryEntries',[]) if e.get('done')]
+    return {'done':sum(t['done'] for t in tasks),'open':sum(not t['done'] for t in tasks),
+            'focusMinutes':round(sum(e.get('focusSeconds',0) for e in actual)/60),
+            'activities':len(actual),'waiting':sum(not t['done'] and t.get('status')=='waiting' for t in tasks),
+            'summary':f"{sum(t['done'] for t in tasks)} taken afgevinkt; {sum(not t['done'] for t in tasks)} open. Alleen geregistreerde invoer, geen coachanalyse."}

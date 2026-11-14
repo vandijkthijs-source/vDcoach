@@ -25,13 +25,13 @@ object CoachWidgetStore {
  fun today():String=SimpleDateFormat("yyyy-MM-dd",Locale.ROOT).apply{timeZone=TimeZone.getTimeZone("Europe/Amsterdam")}.format(Date())
  @Synchronized fun state(c:Context)=JSONObject(prefs(c).getString("mirror",null)?:"{\"days\":{}}")
  @Synchronized fun actions(c:Context)=JSONArray(prefs(c).getString("actions",null)?:"[]")
- @Synchronized fun enqueue(c:Context,row:JSONObject){val list=actions(c);check(list.length()<1000){"Open de app om je widgetacties te verwerken"};row.put("id",UUID.randomUUID().toString());list.put(row);check(prefs(c).edit().putString("actions",list.toString()).commit())}
+ @Synchronized fun enqueue(c:Context,row:JSONObject){val list=actions(c);check(list.length()<1000){"Open de app om je widgetacties te verwerken"};row.put("id",UUID.randomUUID().toString()).put("createdAt",System.currentTimeMillis());list.put(row);check(prefs(c).edit().putString("actions",list.toString()).commit());CoachWidgetRefresh.request(c)}
  @Synchronized fun publish(c:Context,state:JSONObject,ack:Set<String>){val old=actions(c);val keep=JSONArray();for(i in 0 until old.length()){val row=old.getJSONObject(i);if(!ack.contains(row.getString("id")))keep.put(row)};check(prefs(c).edit().putString("mirror",state.toString()).putString("actions",keep.toString()).commit())}
  @Synchronized fun day(c:Context):JSONObject {
   val date=today();val day=JSONObject((state(c).optJSONObject("days")?.optJSONObject(date)?:JSONObject()).toString())
   val rows=actions(c);val tasks=day.optJSONArray("tasks")?:JSONArray();val food=day.optJSONArray("foodEntries")?:JSONArray()
   for(i in 0 until rows.length()){val action=rows.getJSONObject(i);if(action.optString("date")!=date||day.optBoolean("closed"))continue
-   if(action.optString("kind")=="food")food.put(JSONObject().put("id","widget-"+action.optString("id")).put("text",action.optString("text")))
+   if(action.optString("kind")=="food"){val foodId="widget-"+action.optString("id");if((0 until food.length()).none{food.getJSONObject(it).optString("id")==foodId})food.put(JSONObject().put("id",foodId).put("text",action.optString("text")))}
    if(action.optString("kind")=="task-add"){
     val taskId="widget-"+action.getString("id")
     if((0 until tasks.length()).none{tasks.getJSONObject(it).optString("id")==taskId})tasks.put(JSONObject().put("id",taskId).put("title",action.optString("text")).put("category","Task").put("done",false).put("priority",false).put("minutes",0).put("rollovers",0).put("firstPlannedDate",date))
@@ -82,8 +82,9 @@ object CoachWidgets {
  fun open(c:Context,mode:String)=pending(c,Intent(c,CoachWidgetInputActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK or Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS or Intent.FLAG_ACTIVITY_NO_ANIMATION).putExtra("mode",mode).setData(android.net.Uri.parse("vdcoach-widget://$mode")),mode.hashCode())
  fun app(c:Context)=pending(c,Intent(c,MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP),8190)
  fun applicationScreen(c:Context)=pending(c,Intent(c,MainActivity::class.java).putExtra("widgetScreen","Sollicitaties").addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP),8192)
- fun update(c:Context){runCatching {val m=AppWidgetManager.getInstance(c);for(type in arrayOf(CoachTasksWidget::class.java,CoachFoodWidget::class.java,CoachActivityWidget::class.java,CoachApplicationsWidget::class.java)){for(id in m.getAppWidgetIds(ComponentName(c,type)))runCatching {render(c,m,id,type)}}}}
+ fun update(c:Context){runCatching {val m=AppWidgetManager.getInstance(c);for(type in arrayOf(CoachTasksWidget::class.java,CoachActivityWidget::class.java,CoachApplicationsWidget::class.java,CoachPlannerWidget::class.java)){for(id in m.getAppWidgetIds(ComponentName(c,type)))runCatching {render(c,m,id,type)}}}}
  @Suppress("DEPRECATION") fun render(c:Context,m:AppWidgetManager,id:Int,type:Class<*>) {
+  if(type==CoachPlannerWidget::class.java){CoachPlanner.render(c,m,id);return}
   val day=CoachWidgetStore.day(c);val closed=day.optBoolean("closed");val dark=CoachWidgetStyle.dark(c,id)
   val layout=when(type){CoachApplicationsWidget::class.java->R.layout.widget_applications;CoachTasksWidget::class.java->R.layout.widget_tasks;CoachFoodWidget::class.java->R.layout.widget_food;else->R.layout.widget_activity}
   val v=RemoteViews(c.packageName,layout)
@@ -156,7 +157,7 @@ object CoachWidgets {
 }
 open class CoachBaseWidget:AppWidgetProvider(){
  override fun onDeleted(c:Context,ids:IntArray){ids.forEach{CoachWidgetStyle.remove(c,it)}}
- override fun onUpdate(c:Context,m:AppWidgetManager,ids:IntArray){ids.forEach{CoachWidgets.render(c,m,it,javaClass)}}
+ override fun onUpdate(c:Context,m:AppWidgetManager,ids:IntArray){CoachWidgetRefresh.schedule(c);CoachWidgetRefresh.request(c);ids.forEach{CoachWidgets.render(c,m,it,javaClass)}}
  override fun onAppWidgetOptionsChanged(c:Context,m:AppWidgetManager,id:Int,options:Bundle){CoachWidgets.render(c,m,id,javaClass)}
  override fun onReceive(c:Context,intent:Intent){super.onReceive(c,intent);if(intent.action in listOf(Intent.ACTION_DATE_CHANGED,Intent.ACTION_TIME_CHANGED,Intent.ACTION_TIMEZONE_CHANGED))CoachWidgets.update(c)}
 }
@@ -181,9 +182,10 @@ class CoachApplicationViewsService:RemoteViewsService(){override fun onGetViewFa
  override fun onDataSetChanged(){
   val list=CoachWidgetStore.state(this@CoachApplicationViewsService).optJSONObject("applications")?.optJSONArray("items")?:JSONArray()
   val items=(0 until list.length()).map{list.getJSONObject(it)};val grouped=mutableListOf<JSONObject>()
-  for((stage,title) in listOf("action" to "Actie nodig","interview" to "Gesprekken","waiting" to "Wacht op reactie")){
-   val members=items.filter{it.optString("stage")==stage}
-   if(members.isNotEmpty()){grouped.add(JSONObject().put("id","header-"+stage).put("heading",title+" · "+members.size));grouped.addAll(members)}
+  fun applicationColor(item:JSONObject):String=item.optString("color").ifBlank{when(item.optString("stage")){"closed"->"red";"interview"->"green";else->"orange"}}
+  for((color,title) in listOf("green" to "Groen","orange" to "Oranje","red" to "Rood")){
+   val members=items.filter{applicationColor(it)==color}
+   if(members.isNotEmpty()){grouped.add(JSONObject().put("id","header-"+color).put("heading",title+" · "+members.size));grouped.addAll(members)}
   };rows=grouped
  }
  override fun getCount()=rows.size
@@ -320,6 +322,13 @@ class CoachWidgetInputActivity:Activity(){
 }
 class CoachWidgetsModule(private val c:ReactApplicationContext):ReactContextBaseJavaModule(c){
  override fun getName()="CoachWidgets"
+ @ReactMethod fun buildInfo(p:Promise){p.resolve(JSONObject().put("version",BuildConfig.VERSION_NAME).put("code",BuildConfig.VERSION_CODE).put("focus",true).put("director",true).toString())}
+ @ReactMethod fun focusSnapshot(p:Promise){try{p.resolve(CoachFocusStore.snapshot(c).toString())}catch(e:Exception){p.reject("FOCUS","Focus openen mislukt",e)}}
+ @ReactMethod fun focusAction(action:String,taskId:String,minutes:Double,p:Promise){try{when(action){"start"->CoachFocusStore.start(c,taskId,minutes.toInt());"pause"->CoachFocusStore.pause(c);"stop"->CoachFocusStore.pause(c,true);"done","later"->CoachFocusStore.finish(c,action);else->throw IllegalArgumentException("Onbekende focusactie")};p.resolve(CoachFocusStore.snapshot(c).toString())}catch(e:Exception){p.reject("FOCUS",e.message,e)}}
+
+ @ReactMethod fun pickDate(date:String,p:Promise){val activity=c.currentActivity;if(activity==null){p.resolve(null);return};activity.runOnUiThread{try{val parts=date.split("-").map{it.toInt()};DatePickerDialog(activity,{_,y,m,d->p.resolve(String.format(Locale.ROOT,"%04d-%02d-%02d",y,m+1,d))},parts[0],parts[1]-1,parts[2]).apply{setOnCancelListener{p.resolve(null)};show()}}catch(e:Exception){p.reject("DATE","Datum kiezen mislukt",e)}}}
+
+ @ReactMethod fun configureRefresh(url:String,token:String,p:Promise){try{CoachWidgetRefresh.configure(c,url,token);p.resolve(null)}catch(e:Exception){p.reject("WIDGET_REFRESH","Achtergrondverversing instellen mislukt",e)}}
  @ReactMethod fun consumeScreen(p:Promise){try{val intent=c.currentActivity?.intent;val screen=intent?.getStringExtra("widgetScreen");intent?.removeExtra("widgetScreen");p.resolve(screen)}catch(e:Exception){p.reject("WIDGET",e.message,e)}}
  @ReactMethod fun snapshot(p:Promise){try{p.resolve(CoachWidgetStore.actions(c).toString())}catch(e:Exception){p.reject("WIDGET",e.message,e)}}
  @ReactMethod fun publish(raw:String,ids:ReadableArray,p:Promise){try{CoachWidgetStore.publish(c,JSONObject(raw),(0 until ids.size()).mapNotNull{ids.getString(it)}.toSet());CoachWidgets.update(c);p.resolve(null)}catch(e:Exception){p.reject("WIDGET",e.message,e)}}

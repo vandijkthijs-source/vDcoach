@@ -1,0 +1,32 @@
+{
+  "version": "2.0.0",
+  "androidVersionCode": 20,
+  "baseCommit": "c4e2075f20299e00c51ee1e08e89cbe7cbc323c3",
+  "verifiedAt": "2026-11-12T22:24:41.008167+00:00",
+  "apkBuilt": false,
+  "deviceConnected": false,
+  "signingKeySha256": "221e0a3106aa4c3ccc154e0a418b55020b3f9ea6e84f92e8749cd9e2f39f5e58",
+  "signerCertificateSha256": "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c",
+  "checks": {
+    "appTests": 135,
+    "serverTests": 31,
+    "mcpReviewLifecycle": "passed",
+    "typecheck": "passed",
+    "kotlinCompile": "passed"
+  },
+  "files": {
+    "app/index.tsx": "bb64c142ddb61a010fb1bf4c4fcc1881a1cffde4ed612cb6c3c5c3689c4f2ca8",
+    "components/FocusCard.tsx": "be26dfb6a968a1e3293cb4c0ec26452df81c8d91e755a244c543ebcd75936ace",
+    "components/DayCockpit.tsx": "36f21ba439da31af6c6a239daad15ed0ad6a31be2c548e58facb6c9e8a819b83",
+    "components/DayReflection.tsx": "0b325287fd080c60fbc761efba96bba6e8cdb48e7d90c44b0ef939476679bc01",
+    "lib/model.ts": "e551fa3175e55be0d72da49d005df3f168cbb1d030cfd0d17439d9707f84c324",
+    "lib/director.ts": "f7971427229fd9b73f8dfcd311da0c2bb588e20eee623d6fe71c019008f76d59",
+    "lib/focus-planner.ts": "401ba7bede40f531fefa43aeeb6c47d288b314cc2ea784802cafc98a7eca4ab8",
+    "lib/widget-model.ts": "1414256ee4b0692739010c069a7b5df234a4e5e24fa5161bc5d249facfbb8c3d",
+    "server/server.py": "8347798987516156dea92aa66172a68da5f7f22443c4978171a7aa61088f6b5f",
+    "server/event_store.py": "d6370efeefc649bae7ebfa4ea405266efc0992e8fe1446721631cbbdc69b66ce",
+    "server/mcp.mjs": "c7bb96524d499a118bc7283f190031a65e8133f46ce6bb1f915a414ade6ce113",
+    "automation/ochtendrun.md": "e9f3274a606605a74db92fe530689315d2505c9743ca5b2abd14398dfb1ac6a1",
+    "android/app/build.gradle": "8fd3a0423319f1d6bbf11c355e8330507fd679e01c2f03b1278384713647ab3f"
+  }
+}

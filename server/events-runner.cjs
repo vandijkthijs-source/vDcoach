@@ -1,0 +1,2 @@
+const fs=require('fs'),{importWidgetActions}=require('./director/widget-model.cjs'),{importTimedActivities}=require('./director/timer-model.cjs');
+try {const {state,actions,timers}=JSON.parse(fs.readFileSync(0,'utf8'));let next=importWidgetActions(state,actions);const accepted=new Set(next.widgetActionIds||[]);if(actions.some(a=>!accepted.has(a.id)))throw Error('Invalid action');next=importTimedActivities(next,timers);console.log(JSON.stringify(next));}catch(e){console.error('Invalid widget events');process.exitCode=1;}

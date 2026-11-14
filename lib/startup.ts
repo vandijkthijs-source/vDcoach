@@ -12,6 +12,7 @@ export async function readSavedState(storage:Storage):Promise<{state?:State;warn
  }
  const state=migrateLegacyState(validateBackup(JSON.stringify(parsed)));
  validateBackup(JSON.stringify(state));
+ if(!await storage.getItem('vdcoach-before-v2'))await storage.setItem('vdcoach-before-v2',raw);
  if(repaired){await storage.setItem('vdcoach-recovery-'+Date.now(),raw);return {state,warning:'Een oud dagplan kon niet worden gelezen. Je invoer is behouden en de oorspronkelijke opslag is apart bewaard. Het plan wordt opnieuw van de server opgehaald.'};}
  return {state};
 }

@@ -17,7 +17,7 @@ export async function fetchApplications():Promise<ApplicationRecord[]> {
 
 // Bridge the new server register to the existing compact screens and widgets.
 export function applicationSnapshot(items:ApplicationRecord[],stamp=new Date().toISOString()):ApplicationSnapshot {
- return {updatedAt:stamp,items:items.map(a=>({id:a.id,company:a.company,role:a.role,status:a.status,stage:/uitgenodigd|gesprek bevestigd/i.test(a.status)?'interview':'waiting',nextAction:a.nextAction||'Wacht op een nieuwe reactie.',...(a.nextActionDate?{actionDate:a.nextActionDate}:{}),note:[a.notes,a.evidence].filter(Boolean).join('\n').slice(0,4000)}))};
+ return {updatedAt:stamp,items:items.map(a=>({id:a.id,company:a.company,role:a.role,status:a.status,stage:/afgewezen|afwijzing|afgesloten|ingetrokken|niet geselecteerd/i.test(a.status)?'closed':/uitgenodigd|gesprek bevestigd/i.test(a.status)?'interview':'waiting',nextAction:a.nextAction||'Wacht op een nieuwe reactie.',...(a.nextActionDate?{actionDate:a.nextActionDate}:{}),note:[a.notes,a.evidence].filter(Boolean).join('\n').slice(0,4000)}))};
 }
 
 export type DayReview={date:string;inputHash:string;reviewedAt:number;summary:string;nutrition?:{kcal?:number;protein?:number;carbs?:number;fat?:number}};

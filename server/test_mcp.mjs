@@ -17,7 +17,7 @@ test('MCP client discovers tools and persists changes through the actual Python 
   transport=new StdioClientTransport({command:process.execPath,args:[join(root,'mcp.mjs')],env:{...process.env,VDCOACH_URL:`http://127.0.0.1:${port}`,VDCOACH_TOKEN_FILE:join(data,'token')},stderr:'inherit'});
   client=new Client({name:'vdcoach-test',version:'1.0.0'});
   await client.connect(transport);
-  const tools=await client.listTools();assert.equal(tools.tools.length,14);
+  const tools=await client.listTools();assert.ok(tools.tools.some(t=>t.name==='get_day_reviews'));assert.ok(tools.tools.some(t=>t.name==='finish_day_review'));
   assert.equal(tools.tools.find(t=>t.name==='get_day').annotations.readOnlyHint,true);
   assert.equal(tools.tools.find(t=>t.name==='add_diary').annotations.readOnlyHint,false);
   await mkdir(join(data,'library','doc1'),{recursive:true});await writeFile(join(data,'library','doc1','metadata.json'),JSON.stringify({id:'doc1',title:'Test dossier',folder:'Werk',localFile:'original.txt'}));await writeFile(join(data,'library','doc1','content.txt'),'Original history');await writeFile(join(data,'library','doc1','original.txt'),'Original history');
@@ -31,6 +31,14 @@ test('MCP client discovers tools and persists changes through the actual Python 
   result=await client.callTool({name:'add_food',arguments:{date:'2026-11-10',revision:1,id:'meal-1',text:'Yoghurt'}});assert.equal(result.structuredContent.revision,2);
   result=await client.callTool({name:'add_food',arguments:{date:'2026-11-10',revision:2,id:'meal-1',text:'Yoghurt'}});assert.equal(result.structuredContent.revision,2);
   result=await client.callTool({name:'get_day',arguments:{date:'2026-11-10'}});assert.equal(result.structuredContent.day.diaryEntries[0].text,'Walked 40 minutes');assert.equal(result.structuredContent.day.foodEntries.length,1);
+  const context=await client.callTool({name:'get_coach_context',arguments:{date:'2026-11-10'}});assert.equal(context.structuredContent.serverVersion,'2.0.0');assert.equal(context.structuredContent.director.engineVersion,'2.0.0');
+  const queue=await client.callTool({name:'get_day_reviews',arguments:{}});assert.equal(queue.structuredContent.pending.length,1);const pending=queue.structuredContent.pending[0];
+  const reviewArgs={date:pending.date,inputHash:pending.inputHash,summary:'Bevestigd: wandeling geregistreerd. Invoer behouden.'};
+  const review=await client.callTool({name:'finish_day_review',arguments:reviewArgs});assert.equal(review.isError,undefined);
+  const retry=await client.callTool({name:'finish_day_review',arguments:reviewArgs});assert.deepEqual(retry.structuredContent,review.structuredContent);
+  const after=await client.callTool({name:'get_day_reviews',arguments:{}});assert.equal(after.structuredContent.pending.length,0);assert.equal(after.structuredContent.completed.length,1);
+  const preserved=await client.callTool({name:'get_day',arguments:{date:'2026-11-10'}});assert.equal(preserved.structuredContent.day.foodEntries[0].text,'Yoghurt');assert.equal(preserved.structuredContent.day.diaryEntries[0].done,true);
+
  }finally{
   if(client)await client.close();else if(transport)await transport.close();
   backend.kill();await new Promise(resolve=>{if(backend.exitCode!==null)resolve();else backend.once('exit',resolve);});

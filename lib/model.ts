@@ -1,8 +1,9 @@
 import type {ApplicationSnapshot,ApplicationUpdate} from './applications';
 export type Category = 'Task' | 'Habit' | 'Appointment';
-export type Task = { id: string; title: string; category: Category; done: boolean; priority: boolean; minutes: number; rollovers: number; firstPlannedDate?: string; shortTitle?:string; dueDate?:string; comment?:string };
-export type Day = { date: string; tasks: Task[]; notes: string; startId: string | null; closed: boolean };
-export type State = { version: 1; days: Record<string, Day>; coachUrl: string; darkMode?: boolean; hiddenFoodHistory?:string[]; serverApplicationSnapshots?:Record<string,ApplicationSnapshot>; widgetActionIds?:string[]; applicationJournal?:ApplicationUpdate[] };
+export type Task = { id: string; title: string; category: Category; done: boolean; priority: boolean; minutes: number; rollovers: number; firstPlannedDate?: string; shortTitle?:string; dueDate?:string; comment?:string; projectId?:string; status?:'todo'|'waiting'|'parked'; area?:string; firstStep?:string; waitingUntil?:string };
+export type Day = { energy?:'low'|'normal'|'high';focusChoices?:{id:string;until:number}[]; removedTaskIds?:string[];taskOverrides?:string[];deferredTasks?:{id:string;title:string;target:string}[]; date: string; tasks: Task[]; notes: string; startId: string | null; closed: boolean };
+export type Project={area?:string;id:string;title:string;nextStep:string;deadline?:string;archived:boolean};
+export type State = { planningEnd?:string; projects?:Project[];backlogTasks?:Task[]; version: 1; days: Record<string, Day>; coachUrl: string; darkMode?: boolean; hiddenFoodHistory?:string[]; serverApplicationSnapshots?:Record<string,ApplicationSnapshot>; widgetActionIds?:string[]; applicationJournal?:ApplicationUpdate[] };
 export const id = () => `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 export function today() { return amsterdamToday(); }
 export function newDay(date: string): Day { return { date, tasks: ['Vitamine · ochtend', 'Creatine · middag'].map((title,i) => ({ id: `habit-${i}`, title, category: 'Habit', done: false, priority: false, minutes: 0, rollovers: 0 })), notes: '', startId: null, closed: false }; }
@@ -29,6 +30,9 @@ export function parsePlan(input: string): { tasks: Task[]; startId: string | nul
 export function validateBackup(raw: string): State {
  const s = JSON.parse(raw);
  if (s?.version !== 1 || !s.days || typeof s.days !== 'object' || Array.isArray(s.days) || typeof s.coachUrl !== 'string') throw new Error('This is not a vDcoach backup.');
+ if(s.projects!==undefined){if(!Array.isArray(s.projects)||s.projects.length>200||new Set(s.projects.map((p:Project)=>p.id)).size!==s.projects.length||s.projects.some((p:Project)=>!p||typeof p.id!=='string'||typeof p.title!=='string'||!p.title.trim()||typeof p.nextStep!=='string'||typeof p.archived!=='boolean'||(p.deadline!==undefined&&(!/^\d{4}-\d{2}-\d{2}$/.test(p.deadline)||!Number.isFinite(Date.parse(p.deadline+'T12:00:00Z'))))))throw Error('Ongeldig project.');}
+ if(s.backlogTasks!==undefined){if(!Array.isArray(s.backlogTasks)||s.backlogTasks.length>1000)throw Error('Ongeldige backlog.');for(const t of s.backlogTasks)if(!t||typeof t.id!=='string'||typeof t.title!=='string'||!t.title.trim()||t.category!=='Task')throw Error('Ongeldige backlogtaak.');for(const task of s.backlogTasks)validateBackup(JSON.stringify({version:1,coachUrl:'',days:{'9999-12-31':{date:'9999-12-31',tasks:[task],notes:'',startId:null,closed:false}}}));}
+ if(s.planningEnd!==undefined&&!/^(?:(?:[01]\d|2[0-3]):[0-5]\d|24:00)$/.test(s.planningEnd))throw Error('Ongeldige eindtijd voor planning.');
  if(s.hiddenFoodHistory!==undefined&&(!Array.isArray(s.hiddenFoodHistory)||s.hiddenFoodHistory.some((value:unknown)=>typeof value!=='string')))throw new Error('Ongeldige voedingshistorie.');
  if(s.serverApplicationSnapshots!==undefined){if(!s.serverApplicationSnapshots||typeof s.serverApplicationSnapshots!=='object'||Array.isArray(s.serverApplicationSnapshots))throw Error('Ongeldige sollicitatiehistorie.');for(const [date,snapshot] of Object.entries(s.serverApplicationSnapshots)){if(!/^\d{4}-\d{2}-\d{2}$/.test(date))throw Error('Ongeldige sollicitatiedatum.');validateApplications(snapshot);}}
  if(s.applicationJournal!==undefined){if(!Array.isArray(s.applicationJournal)||s.applicationJournal.length>10000)throw Error('Ongeldige sollicitatiewijzigingen.');const ids=new Set();for(const u of s.applicationJournal){if(!u||(u.operation!==undefined&&!['add','update','delete'].includes(u.operation))||typeof u.id!=='string'||ids.has(u.id)||typeof u.date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(u.date))throw Error('Ongeldige sollicitatiewijziging.');ids.add(u.id);validateApplications({updatedAt:u.updatedAt,items:[u.item]});}}
@@ -36,6 +40,8 @@ export function validateBackup(raw: string): State {
  if(s.darkMode!==undefined&&typeof s.darkMode!=='boolean')throw new Error('Ongeldige weergavevoorkeur.');
  for (const [date,d] of Object.entries(s.days) as [string, any][]) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || d.date !== date || !Array.isArray(d.tasks) || typeof d.notes !== 'string' || typeof d.closed !== 'boolean' || !(d.startId === null || typeof d.startId === 'string')) throw new Error('Invalid day in backup.');
+  if(d.energy!==undefined&&!['low','normal','high'].includes(d.energy))throw Error('Ongeldige dagvoorkeur.');
+  if(d.focusChoices!==undefined&&(!Array.isArray(d.focusChoices)||d.focusChoices.length>1000||d.focusChoices.some((c:any)=>!c||typeof c.id!=='string'||typeof c.until!=='number'||!Number.isFinite(c.until))))throw Error('Ongeldige focuskeuze.');
   const ids = new Set();
   for (const t of d.tasks) {
    if (typeof t.id !== 'string' || ids.has(t.id) || typeof t.title !== 'string' || !t.title.trim() || !['Task','Habit','Appointment'].includes(t.category) || typeof t.done !== 'boolean' || typeof t.priority !== 'boolean' || !Number.isInteger(t.minutes) || t.minutes < 0 || !Number.isInteger(t.rollovers) || t.rollovers < 0) throw new Error('Invalid task in backup.');
@@ -43,6 +49,9 @@ export function validateBackup(raw: string): State {
    if(t.shortTitle!==undefined&&(typeof t.shortTitle!=='string'||!t.shortTitle.trim()||t.shortTitle.length>80))throw new Error('Invalid short task title.');
    if(t.dueDate!==undefined&&(typeof t.dueDate!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(t.dueDate)||!Number.isFinite(Date.parse(t.dueDate+'T00:00:00Z'))||new Date(t.dueDate+'T00:00:00Z').toISOString().slice(0,10)!==t.dueDate))throw new Error('Invalid task deadline.');
    if(t.comment!==undefined&&(typeof t.comment!=='string'||t.comment.length>4000))throw new Error('Invalid task comment.');
+   if(t.status!==undefined&&!['todo','waiting','parked'].includes(t.status))throw Error('Ongeldige taakstatus.');
+   for(const key of ['area','firstStep','waitingUntil'])if((t as any)[key]!==undefined&&(typeof (t as any)[key]!=='string'||(t as any)[key].length>4000))throw Error('Ongeldige coachgegevens.');
+   if(t.waitingUntil!==undefined&&(!/^\d{4}-\d{2}-\d{2}$/.test(t.waitingUntil)||!Number.isFinite(Date.parse(t.waitingUntil+'T12:00:00Z'))))throw Error('Ongeldige wachtdatum.');
    ids.add(t.id);
   }
   if(d.deletedTasks!==undefined){if(!Array.isArray(d.deletedTasks)||d.deletedTasks.length>1000)throw new Error('Invalid deleted tasks.');for(const task of d.deletedTasks)validateBackup(JSON.stringify({version:1,coachUrl:'',days:{[date]:{date,tasks:[task],notes:'',startId:null,closed:false}}}));if(new Set(d.deletedTasks.map((t:Task)=>t.id)).size!==d.deletedTasks.length)throw new Error('Duplicate deleted task.');}
@@ -52,6 +61,7 @@ export function validateBackup(raw: string): State {
   for(const e of d.diaryEntries??[]){for(const key of ['startTime','endTime','location'])if(e[key]!==undefined&&typeof e[key]!=='string')throw new Error('Ongeldige activiteit.');for(const key of ['allDay','edited'])if(e[key]!==undefined&&typeof e[key]!=='boolean')throw new Error('Ongeldige activiteit.');// Historical entries may have equal rounded times or cross midnight.
    // Preserve their original fields; only the activity editor requires a positive same-day range.
    if(!e.allDay){if(e.startTime!==undefined)diaryTime(e.startTime);if(e.endTime!==undefined)diaryTime(e.endTime);}}
+  if(d.diaryEntries!==undefined)for(const e of d.diaryEntries){if(e.taskId!==undefined&&typeof e.taskId!=='string')throw Error('Ongeldige taakverwijzing.');if(e.focusSeconds!==undefined&&(typeof e.focusSeconds!=='number'||!Number.isFinite(e.focusSeconds)||e.focusSeconds<0))throw Error('Ongeldige focustijd.');}
   if(d.foodEntries!==undefined){if(!Array.isArray(d.foodEntries)||d.foodEntries.some((e:FoodEntry)=>typeof e.id!=='string'||typeof e.text!=='string'||!e.text.trim())||new Set(d.foodEntries.map((e:FoodEntry)=>e.id)).size!==d.foodEntries.length)throw new Error('Ongeldige voedingslijst.');}
   if(d.foodNotes!==undefined&&typeof d.foodNotes!=='string')throw new Error('Ongeldige voedingsnotitie.');
   if(d.meals!==undefined){if(!Array.isArray(d.meals))throw new Error('Ongeldige voedingsgegevens.');for(const m of d.meals){if(typeof m.id!=='string'||typeof m.text!=='string'||typeof m.time!=='string'||typeof m.estimated!=='boolean'||['kcal','protein','carbs','fat'].some(k=>m[k]!==undefined&&(typeof m[k]!=='number'||!Number.isFinite(m[k])||m[k]<0)))throw new Error('Ongeldige voedingsgegevens.');}}
@@ -85,7 +95,7 @@ export function mergeMorningPlan(day:DailyRecord,plan:MorningPlan):DailyRecord {
  if(day.closed)return day;
  if(day.plan&&Date.parse(plan.generatedAt)<=Date.parse(day.plan.generatedAt))return day;
  const old=new Map(day.tasks.map(t=>[t.id,t]));
- const merged=plan.tasks.filter(t=>!day.removedTaskIds?.includes(t.id)).map(t=>day.taskOverrides?.includes(t.id)&&old.has(t.id)?old.get(t.id)!:({...t,done:old.get(t.id)?.done??false,...(old.get(t.id)?.comment!==undefined?{comment:old.get(t.id)!.comment}:{})}));
+ const merged=plan.tasks.filter(t=>!day.removedTaskIds?.includes(t.id)).map(t=>day.taskOverrides?.includes(t.id)&&old.has(t.id)?old.get(t.id)!:({...t,done:old.get(t.id)?.done??false,...(old.get(t.id)?.status?{status:old.get(t.id)!.status}:{}),...(old.get(t.id)?.waitingUntil?{waitingUntil:old.get(t.id)!.waitingUntil}:{}),...(old.get(t.id)?.area?{area:old.get(t.id)!.area}:{}),...(old.get(t.id)?.firstStep?{firstStep:old.get(t.id)!.firstStep}:{}),...(old.get(t.id)?.comment!==undefined?{comment:old.get(t.id)!.comment}:{})}));
  for(const t of day.tasks)if(!merged.some(v=>v.id===t.id)&&(day.taskOverrides?.includes(t.id)||!day.plan||!day.plan.tasks.some(v=>v.id===t.id)))merged.push({...t,priority:false});
  return {...day,tasks:merged,startId:plan.startId,plan};
 }
@@ -108,14 +118,14 @@ export function foodText(day:DailyRecord):string {
  return getFoodEntries(day).map(e=>e.text).join('\n');
 }
 
-export type DiaryEntry={id:string;text:string;done:boolean;appointmentId?:string;time?:string;note?:string;startTime?:string;endTime?:string;allDay?:boolean;location?:string;edited?:boolean};
+export type DiaryEntry={taskId?:string;focusSeconds?:number;id:string;text:string;done:boolean;appointmentId?:string;time?:string;note?:string;startTime?:string;endTime?:string;allDay?:boolean;location?:string;edited?:boolean};
 export function getDiaryEntries(day:DailyRecord):DiaryEntry[]{
  const removed=new Set(day.removedDiaryIds??[]);
  const entries=[...(day.diaryEntries??(day.notes.trim()?[{id:'legacy-notes',text:day.notes,done:false}]:[]))].filter(e=>!removed.has(e.id));
  const clock=(s:string)=>new Date(s).toLocaleTimeString('nl-NL',{timeZone:'Europe/Amsterdam',hour:'2-digit',minute:'2-digit'});
  for(const a of day.plan?.appointments??[]){
   const id=`agenda-${a.id}`;if(removed.has(id))continue;const index=entries.findIndex(e=>e.id===id||e.appointmentId===a.id);
-  const allDay=a.note?.toLowerCase().includes('hele dag')??false;const startTime=clock(a.start),endTime=clock(a.end)==='00:00'&&new Date(a.end)>new Date(a.start)?'24:00':clock(a.end);const details={id,text:a.title,appointmentId:a.id,startTime,endTime,allDay,time:allDay?'Hele dag':`${startTime}–${endTime}`,note:a.note};
+  const allDay=a.note?.toLowerCase().includes('hele dag')??false;const localDay=(stamp:string)=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Amsterdam',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(stamp));const startTime=localDay(a.start)<day.date?'00:00':clock(a.start),endTime=localDay(a.end)>day.date?'24:00':clock(a.end)==='00:00'&&new Date(a.end)>new Date(a.start)?'24:00':clock(a.end);const details={id,text:a.title,appointmentId:a.id,startTime,endTime,allDay,time:allDay?'Hele dag':`${startTime}–${endTime}`,note:a.note};
   if(index<0)entries.push({...details,done:day.tasks.find(t=>t.id===a.id&&t.category==='Appointment')?.done??false});
   else if(!entries[index].edited)entries[index]={...entries[index],...details};
  }

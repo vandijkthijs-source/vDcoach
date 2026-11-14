@@ -1,3 +1,7 @@
+# vDcoach 2.0
+
+Zie `docs/VDCOACH-2.0.md` voor de actuele dagcyclus, outbox, buildidentiteit, herstelprocedure en testgrenzen. De onderstaande 1.2.0-notities beschrijven de voorganger.
+
 # Android 1.2.0 — serververbinding
 
 De app gebruikt uitsluitend `/state` voor dagplannen en voortgang. De aparte

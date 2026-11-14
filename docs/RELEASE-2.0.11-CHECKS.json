@@ -1,0 +1,30 @@
+{
+  "version": "2.0.11",
+  "androidVersionCode": 31,
+  "verifiedDate": "2026-11-14",
+  "baseCommit": "c4e2075f20299e00c51ee1e08e89cbe7cbc323c3",
+  "apkBuilt": false,
+  "phonePhysicallyTested": false,
+  "signingKeyPreserved": true,
+  "checks": {
+    "appTests": 179,
+    "serverTests": 57,
+    "mcpIntegrationTests": 1,
+    "typecheck": "passed",
+    "androidCompile": {
+      "status": "passed",
+      "checkedDate": "2026-11-13",
+      "note": "Same app source; no native or app code changed during GitHub preparation."
+    }
+  },
+  "files": {
+    "app/index.tsx": "59b8759af2c5de70a2a44a00be27af4a1345f194b26c983ad171b7bd37948e99",
+    "components/CoachChat.tsx": "1a9cba5cdeb9a5ebd03cfa6bb3f166b7c285f7caa4f214669c43304fee16f11c",
+    "components/CoachReply.tsx": "9170ba28fd5f2286edd087f1bc6724717fd0051a7c8a6daeaf47ff6a426f28fb",
+    "components/CoachPresence.tsx": "e28d63720ff716dff4f4e531d129f03ea765f41069a1d14806a9d754f224144b",
+    "android/app/src/main/java/nl/vandijk/coach/CoachBoidsPackage.kt": "0c00f5683836385c049a213d329720ae95a1874f165bebaa085f2b452e4ce665",
+    "lib/applications.ts": "11502157972d12b0f67fb2d00100994d7d2b29807cd05eb1e9940c760849c5db",
+    "server/chat_auth.py": "21737a3f39498b482e059cd3e5914353f82ad8898e187cd6d35404d4abc0cdcb",
+    "server/chat_store.py": "136cfa0ae68e686eb78b799baeb149499dc17b6855d40c1c887ac45abf125f4c"
+  }
+}

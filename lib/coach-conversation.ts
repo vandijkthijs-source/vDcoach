@@ -1,0 +1,4 @@
+/** Compact copy is only a preview; the complete saved plan remains available separately. */
+export function coachIntro(text:string,limit=155){const clean=text.trim().replace(/\s+/g,' '),sentence=/^.*?[.!?](?:\s|$)/.exec(clean);const first=(sentence?sentence[0].trim():clean)||'Wat speelt er vandaag?';if(first.length<=limit)return first;const cut=first.slice(0,limit-1),space=cut.lastIndexOf(' ');return cut.slice(0,space>limit*.6?space:cut.length).replace(/[,;:]$/,'')+'…';}
+export function readableCoachText(text:string){return text.replace(/^[ \t]{0,3}#{1,6}[ \t]+/gm,'').replace(/\*\*/g,'').replace(/^[ \t]*[-*][ \t]+\[x\][ \t]*/gmi,'✓ ').replace(/^[ \t]*[-*][ \t]+\[ \][ \t]*/gm,'• ').replace(/^[ \t]*[-*][ \t]+/gm,'• ').trim();}
+export function nearConversationEnd(offset:number,viewport:number,content:number){return offset+viewport>=content-56;}

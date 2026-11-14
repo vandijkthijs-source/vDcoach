@@ -1,5 +1,5 @@
 import {DailyRecord,DiaryEntry,State,getDiaryEntries,newDay} from './model';
-export type TimedActivity={id:string;title:string;startedAt:number;stoppedAt?:number};
+export type TimedActivity={taskId?:string;focusSessionId?:string;focusMinutes?:number;id:string;title:string;startedAt:number;stoppedAt?:number};
 export type TimerSnapshot={active:TimedActivity|null;completed:TimedActivity[]};
 const parts=(stamp:number)=>Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Amsterdam',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).formatToParts(new Date(stamp)).map(p=>[p.type,p.value]));
 const localDate=(stamp:number)=>{const p=parts(stamp);return `${p.year}-${p.month}-${p.day}`;};
@@ -12,7 +12,7 @@ export function timerEntries(activity:TimedActivity):{date:string;entry:DiaryEnt
  while(cursor<stoppedAt!){const date=localDate(cursor);let end=stoppedAt!;
   if(localDate(end)!==date){let low=cursor,high=Math.min(end,cursor+27*3600000);while(high-low>1){const middle=Math.floor((low+high)/2);if(localDate(middle)===date)low=middle;else high=middle;}end=high;}
   const from=parts(cursor),to=parts(end);const startMinute=Number(from.hour)*60+Number(from.minute);const endMinute=localDate(end)!==date?1440:Math.min(1440,Math.max(startMinute+1,Number(to.hour)*60+Number(to.minute)+(Number(to.second)>0||end%1000>0?1:0)));
-  result.push({date,entry:{id:`timer-${activity.id}-${date}`,text:activity.title.trim(),done:true,edited:true,startTime:label(startMinute),endTime:label(endMinute),time:`${label(startMinute)}–${label(endMinute)}`,note:`Timer · ${elapsedLabel(end-cursor)} · ${new Date(cursor).toISOString()} – ${new Date(end).toISOString()}`}});cursor=end;
+  result.push({date,entry:{id:`timer-${activity.id}-${date}`,text:activity.title.trim(),done:true,edited:true,...(activity.taskId?{taskId:activity.taskId,focusSeconds:(end-cursor)/1000}:{}),startTime:label(startMinute),endTime:label(endMinute),time:`${label(startMinute)}–${label(endMinute)}`,note:`Timer · ${elapsedLabel(end-cursor)} · ${new Date(cursor).toISOString()} – ${new Date(end).toISOString()}`}});cursor=end;
  }
  return result;
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Private, authenticated vDcoach snapshots. No AI, Google or external services."""
+"""Private authenticated vDcoach data and optional subscription-backed ChatGPT chat."""
 import hmac
 import json
 import os
@@ -12,11 +12,15 @@ from pathlib import Path
 from urllib.parse import urlparse, parse_qs
 import re
 from plan_store import validate
-from progress_store import ProgressStore, Conflict
+from progress_store import ProgressStore, Conflict, ClosingConnection
 from tunnel_status import tunnel_status
 from library_store import LibraryStore
 from coaching_store import CoachingStore
 from day_review import DayReviews
+from director_store import get_director
+from event_store import EventStore
+from chat_auth import ChatAuth,ChatError
+from chat_store import ChatStore
 
 ROOT = Path(os.environ.get('VDCOACH_DATA', Path(__file__).parent / 'data'))
 ROOT.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -29,13 +33,16 @@ TOKEN = TOKEN_FILE.read_text().strip()
 if len(TOKEN) < 32:
     raise RuntimeError('Backup token must contain at least 32 characters')
 DB = ROOT / 'backups.sqlite3'
-with sqlite3.connect(DB) as db:
+with sqlite3.connect(DB, factory=ClosingConnection) as db:
     db.execute('CREATE TABLE IF NOT EXISTS snapshots (id INTEGER PRIMARY KEY, created REAL NOT NULL, body TEXT NOT NULL)')
 os.chmod(DB, 0o600)
 STORE = ProgressStore(DB)
 LIBRARY = LibraryStore(ROOT)
 REVIEWS = DayReviews(STORE)
+EVENTS = EventStore(STORE)
 COACH = CoachingStore(STORE, LIBRARY)
+CHAT_AUTH = ChatAuth(ROOT)
+CHAT = ChatStore(STORE, CHAT_AUTH, COACH)
 LIBRARY.materialize_folders()
 STARTED = time.time()
 MAX_BYTES = 5 * 1024 * 1024
@@ -64,6 +71,21 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if not self.authorized(): return
         parsed = urlparse(self.path)
+        if parsed.path in ('/chat/status','/chat/models','/chat/history','/chat/accounts'):
+            try:
+                result=CHAT_AUTH.accounts() if parsed.path=='/chat/accounts' else CHAT_AUTH.status() if parsed.path=='/chat/status' else {'models':CHAT_AUTH.models()} if parsed.path=='/chat/models' else CHAT.history(parse_qs(parsed.query).get('date',[''])[0])
+                return self.reply(200,result)
+            except ChatError as error:
+                return self.reply(error.status,{'error':str(error),'code':error.code})
+            except ValueError:
+                return self.reply(400,{'error':'Ongeldige chatdatum of aanvraag.'})
+        if parsed.path == '/director':
+            try:
+                return self.reply(200, get_director(STORE.read()['state'],parse_qs(parsed.query).get('date',[''])[0]))
+            except ValueError as error:
+                return self.reply(400, {'error':str(error)})
+            except Exception:
+                return self.reply(503, {'error':'Dagregisseur tijdelijk niet beschikbaar; opgeslagen gegevens blijven behouden'})
         if parsed.path == '/day-reviews':
             return self.reply(200, REVIEWS.queue())
         if parsed.path == '/folders':
@@ -109,9 +131,9 @@ class Handler(BaseHTTPRequestHandler):
                 'plans': sorted(p.stem for p in (ROOT / 'plans').glob('????-??-??.json'))})
         if parsed.path == '/health':
             try:
-                with sqlite3.connect(DB) as db:
+                with sqlite3.connect(DB, factory=ClosingConnection) as db:
                     db.execute('SELECT 1 FROM snapshots LIMIT 1').fetchone()
-                return self.reply(200, {'status': 'ok', 'service': 'vdcoach', 'apiVersion': 1})
+                return self.reply(200, {'status': 'ok', 'service': 'vdcoach', 'apiVersion': 2, 'release':'2.0.0', 'capabilities':['director','day_reviews','focus','revision_sync','chatgpt_plan_chat']})
             except sqlite3.Error:
                 return self.reply(503, {'status': 'unavailable'})
         if parsed.path == '/plan':
@@ -130,13 +152,46 @@ class Handler(BaseHTTPRequestHandler):
                 return self.reply(503, {'error': 'Morning plan unavailable'})
         if self.path != '/backup':
             return self.reply(404, {'error': 'Not found'})
-        with sqlite3.connect(DB) as db:
+        with sqlite3.connect(DB, factory=ClosingConnection) as db:
             row = db.execute('SELECT created, body FROM snapshots ORDER BY id DESC LIMIT 1').fetchone()
         if not row: return self.reply(404, {'error': 'No laptop backup yet'})
         self.reply(200, {'savedAt': row[0], 'state': json.loads(row[1])})
 
     def do_POST(self):
         if not self.authorized(): return
+        if self.path in ('/chat/auth/start','/chat/auth/cancel','/chat/auth/finish','/chat/auth/confirm-included','/chat/auth/disconnect','/chat/auth/select','/chat/send','/chat/accept'):
+            try:
+                length=int(self.headers.get('Content-Length','0'))
+                if not 0 < length <= 65536:return self.reply(413,{'error':'Chatbericht te groot.'})
+                self.connection.settimeout(20);args=json.loads(self.rfile.read(length))
+                if not isinstance(args,dict):raise ValueError()
+                path=self.path
+                if path=='/chat/auth/start':result=CHAT_AUTH.start(args.get('redirectUri',''),args.get('newAccount') is True)
+                elif path=='/chat/auth/cancel':result=CHAT_AUTH.cancel(args.get('attemptId',''))
+                elif path=='/chat/auth/finish':result=CHAT_AUTH.finish(args)
+                elif path=='/chat/auth/confirm-included':
+                    if args.get('confirmed') is not True:raise ChatError('usage_settings','Bevestig eerst dat extra credits uitstaan.')
+                    result=CHAT_AUTH.confirm_included_only()
+                elif path=='/chat/auth/select':
+                    if CHAT.busy.locked():raise ChatError('busy','Wacht tot het antwoord klaar is.',409)
+                    result=CHAT_AUTH.select_account(args.get('accountId'))
+                elif path=='/chat/auth/disconnect':
+                    if CHAT.busy.locked():raise ChatError('busy','Wacht tot het antwoord klaar is.',409)
+                    result=CHAT_AUTH.disconnect()
+                elif path=='/chat/send':result=CHAT.send(args)
+                else:result=CHAT.accept(args)
+                return self.reply(200,result)
+            except ChatError as error:return self.reply(error.status,{'error':str(error),'code':error.code})
+            except Conflict as error:return self.reply(409,{'error':str(error),'code':'revision_conflict'})
+            except (ValueError,TypeError,KeyError):return self.reply(400,{'error':'Ongeldige chataanvraag; je gegevens zijn behouden.'})
+        if self.path == '/widget-events':
+            try:
+                length=int(self.headers.get('Content-Length','0'))
+                if not 0 < length <= MAX_BYTES:return self.reply(413,{'error':'Events too large'})
+                self.connection.settimeout(15)
+                return self.reply(200,EVENTS.apply(json.loads(self.rfile.read(length))))
+            except (ValueError,TypeError,KeyError) as error:
+                return self.reply(400,{'error':str(error)})
         if self.path in ('/coach-plan','/applications','/day-review'):
             try:
                 length = int(self.headers.get('Content-Length','0'))
@@ -186,7 +241,7 @@ class Handler(BaseHTTPRequestHandler):
             if state.get('version') != 1 or not isinstance(state.get('days'), dict) or not isinstance(state.get('coachUrl'), str):
                 return self.reply(400, {'error': 'Invalid vDcoach backup'})
             now = time.time()
-            with sqlite3.connect(DB) as db:
+            with sqlite3.connect(DB, factory=ClosingConnection) as db:
                 db.execute('INSERT INTO snapshots(created, body) VALUES (?, ?)', (now, json.dumps(state)))
                 db.execute('DELETE FROM snapshots WHERE id NOT IN (SELECT id FROM snapshots ORDER BY id DESC LIMIT 30)')
             self.reply(201, {'savedAt': now})

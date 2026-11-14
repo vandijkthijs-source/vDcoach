@@ -12,6 +12,7 @@
       <data android:scheme="https"/>
     </intent>
   </queries>
+  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
   <application android:name=".MainApplication" android:label="@string/app_name" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" android:allowBackup="false" android:theme="@style/AppTheme" android:supportsRtl="true" android:enableOnBackInvokedCallback="false" android:usesCleartextTraffic="true" android:fullBackupContent="@xml/secure_store_backup_rules" android:dataExtractionRules="@xml/secure_store_data_extraction_rules">
     <meta-data android:name="expo.modules.updates.ENABLED" android:value="false"/>
     <meta-data android:name="expo.modules.updates.EXPO_UPDATES_CHECK_ON_LAUNCH" android:value="ALWAYS"/>
@@ -21,10 +22,19 @@
     <receiver android:name=".CoachApplicationsWidget" android:label="Sollicitaties · 2 × 3" android:exported="false"><intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/><action android:name="android.intent.action.DATE_CHANGED"/></intent-filter><meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_applications_info"/></receiver>
     <service android:name=".CoachApplicationViewsService" android:exported="false" android:permission="android.permission.BIND_REMOTEVIEWS"/>
     <service android:name=".CoachFoodViewsService" android:exported="false" android:permission="android.permission.BIND_REMOTEVIEWS"/>
+    <service android:name=".CoachWidgetRefreshJob" android:exported="true" android:permission="android.permission.BIND_JOB_SERVICE"/>
+    <receiver android:name=".CoachReleaseReceiver" android:exported="false"><intent-filter><action android:name="android.intent.action.MY_PACKAGE_REPLACED"/><action android:name="android.intent.action.BOOT_COMPLETED"/></intent-filter></receiver>
+    <receiver android:name=".CoachPlannerWidget" android:label="Dagcoach 2.0 · volledig scherm" android:exported="false"><intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/><action android:name="android.intent.action.DATE_CHANGED"/><action android:name="android.intent.action.TIME_SET"/><action android:name="android.intent.action.TIMEZONE_CHANGED"/></intent-filter><meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_planner_info"/></receiver>
+    <service android:name=".CoachFocusViewsService" android:exported="false" android:permission="android.permission.BIND_REMOTEVIEWS"/>
+    <activity android:name=".CoachFocusActionActivity" android:exported="false" android:theme="@style/CoachWidgetInputTheme" android:excludeFromRecents="true"/>
+    <service android:name=".CoachPlannerViewsService" android:exported="false" android:permission="android.permission.BIND_REMOTEVIEWS"/>
+    <activity android:name=".CoachPlannerPopup" android:exported="false" android:theme="@style/CoachWidgetInputTheme" android:excludeFromRecents="true"/>
     <service android:name=".CoachTaskViewsService" android:exported="false" android:permission="android.permission.BIND_REMOTEVIEWS"/>
     <receiver android:name=".CoachTasksWidget" android:label="Taken · 2 × 3" android:exported="false"><intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/><action android:name="android.intent.action.DATE_CHANGED"/><action android:name="android.intent.action.TIME_SET"/><action android:name="android.intent.action.TIMEZONE_CHANGED"/></intent-filter><meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_tasks_info"/></receiver>
-    <receiver android:name=".CoachFoodWidget" android:label="Voeding · 2 × 2" android:exported="false"><intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/><action android:name="android.intent.action.DATE_CHANGED"/><action android:name="android.intent.action.TIME_SET"/><action android:name="android.intent.action.TIMEZONE_CHANGED"/></intent-filter><meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_food_info"/></receiver>
     <receiver android:name=".CoachActivityWidget" android:label="Activiteit · 4 × 1" android:exported="false"><intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/><action android:name="android.intent.action.DATE_CHANGED"/><action android:name="android.intent.action.TIME_SET"/><action android:name="android.intent.action.TIMEZONE_CHANGED"/></intent-filter><meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_activity_info"/></receiver>
+    <service android:name=".CoachChatAuthService" android:exported="false" android:stopWithTask="false" android:foregroundServiceType="specialUse">
+      <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="Temporary user-initiated OAuth sign-in: keeps a phone-local loopback callback reachable while the system browser is open; ends on completion, cancellation or ten-minute timeout."/>
+    </service>
     <service android:name=".CoachTimerService" android:exported="false" android:stopWithTask="false" android:foregroundServiceType="specialUse">
       <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="User-started elapsed activity timer with persistent chronometer and stop action; records the completed activity in the local diary."/>
     </service>

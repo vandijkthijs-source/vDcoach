@@ -34,6 +34,10 @@ def validate(p):
     ids=set()
     for t in p['tasks']:
         if not isinstance(t,dict) or not isinstance(t.get('id'),str) or not t['id'] or t['id'] in ids: raise ValueError('Task IDs must be unique')
+        if t.get('status','todo') not in ('todo','waiting','parked'):raise ValueError('Invalid task status')
+        for field in ('firstStep','area','waitingUntil'):
+            if field in t and (not isinstance(t[field],str) or len(t[field])>4000):raise ValueError('Invalid coach metadata')
+        if t.get('waitingUntil'):dt.date.fromisoformat(t['waitingUntil'])
         ids.add(t['id'])
         if not isinstance(t.get('title'),str) or not t['title'].strip() or t.get('category') not in ('Task','Habit','Appointment'): raise ValueError('Invalid task')
         if t.get('done') is not False or type(t.get('priority')) is not bool: raise ValueError('Morning plans cannot complete tasks')

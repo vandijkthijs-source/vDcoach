@@ -38,8 +38,8 @@ def backup(root, destination):
             project = Path(__file__).resolve().parent.parent
             extensions = {'.py', '.mjs', '.js', '.cjs', '.ts', '.tsx', '.json', '.md',
                           '.service', '.timer', '.desktop', '.html', '.css', '.svg'}
-            excluded = {'data', 'backups', 'node_modules', 'bin', '__pycache__', '.git'}
-            for folder in ('server', 'app', 'lib', 'scripts', 'tests'):
+            excluded = {'data', 'backups', 'node_modules', 'bin', '__pycache__', '.git', 'fix-backups', 'dashboard-backups'}
+            for folder in ('server', 'app', 'lib', 'components', 'constants', 'automation', 'scripts', 'tests'):
                 for path in (project / folder).rglob('*'):
                     relative = path.relative_to(project)
                     if path.is_file() and not excluded.intersection(relative.parts) and path.suffix in extensions:

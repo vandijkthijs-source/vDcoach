@@ -20,10 +20,11 @@ object CoachTimerStore {
  private fun prefs(c: Context) = c.getSharedPreferences("coach_timer", Context.MODE_PRIVATE)
  @Synchronized fun snapshot(c: Context): JSONObject = JSONObject(prefs(c).getString("state", null) ?: "{\"active\":null,\"completed\":[]}")
  private fun save(c: Context, state: JSONObject) { check(prefs(c).edit().putString("state", state.toString()).commit()) { "Timer kon niet worden opgeslagen" }; CoachWidgets.update(c) }
- @Synchronized fun start(c: Context, title: String): JSONObject {
+ @Synchronized fun start(c: Context, title: String, taskId:String?=null, focusMinutes:Int=0, focusSessionId:String?=null): JSONObject {
   val state = snapshot(c)
   check(state.isNull("active")) { "Er loopt al een timer" }
   state.put("active", JSONObject().put("id", UUID.randomUUID().toString()).put("title", title.trim().take(300).ifEmpty { "Activiteit" }).put("startedAt", System.currentTimeMillis()))
+  if(taskId!=null)state.getJSONObject("active").put("taskId",taskId).put("focusMinutes",focusMinutes).put("focusSessionId",focusSessionId)
   save(c, state); return state
  }
  @Synchronized fun rollback(c: Context, id: String) { val state = snapshot(c); if(state.optJSONObject("active")?.optString("id") == id) { state.put("active", JSONObject.NULL); save(c,state) } }
@@ -31,7 +32,7 @@ object CoachTimerStore {
   val state = snapshot(c); val active = state.optJSONObject("active") ?: return state
   val completed = state.getJSONArray("completed")
   active.put("stoppedAt", maxOf(System.currentTimeMillis(), active.getLong("startedAt") + 1))
-  completed.put(active); state.put("active", JSONObject.NULL); save(c,state); return state
+  completed.put(active); state.put("active", JSONObject.NULL); save(c,state); CoachWidgetRefresh.request(c); return state
  }
  @Synchronized fun acknowledge(c: Context, ids: Set<String>) {
   val state = snapshot(c); val old = state.getJSONArray("completed"); val keep = JSONArray()
